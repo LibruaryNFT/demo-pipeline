@@ -37,9 +37,21 @@ jobs:
         continue-on-error: true
         run: pytest tests/ -q
 
+      # GitHub's own secret scanning and push protection are free only on
+      # public repos; on a private one they need paid Advanced Security. This
+      # is the stand-in. --selftest first, so a clean scan means the patterns
+      # were verified rather than silently broken.
+      - name: Secret scan
+        id: secrets
+        continue-on-error: true
+        run: |
+          python scripts/scan_secrets.py --selftest
+          python scripts/scan_secrets.py
+
       - name: Result
         run: |
           fail=0
           [ "${{ steps.lint.outcome }}" = "success" ] || { echo "::error::ruff failed"; fail=1; }
           [ "${{ steps.tests.outcome }}" = "success" ] || { echo "::error::pytest failed"; fail=1; }
+          [ "${{ steps.secrets.outcome }}" = "success" ] || { echo "::error::secret scan failed"; fail=1; }
           exit $fail
