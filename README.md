@@ -49,7 +49,16 @@ That is everything the default `playwright` backend needs. The `xvfb` backend ad
 sudo apt install xvfb ffmpeg      # plus Google Chrome from its own package
 ```
 
-Check your setup with the example, which renders against `example.com` and exercises TTS, the browser and ffmpeg end to end:
+Check your setup before rendering anything:
+
+```bash
+.venv/bin/python -m demo_pipeline.doctor          # playwright backend
+.venv/bin/python -m demo_pipeline.doctor --xvfb   # also the xvfb stack
+```
+
+It checks each dependency in isolation — ffmpeg, the drawtext font, Chromium, the API key, and for `--xvfb` that x11grab really captures a non-black frame — and exits non-zero if anything the backend needs is missing. Run it first when a render fails; it turns "ffmpeg exited 222" into a named missing dependency.
+
+Then render the example, which exercises TTS, the browser and ffmpeg end to end against `example.com`:
 
 ```bash
 .venv/bin/python examples/example_demo.py
@@ -240,6 +249,7 @@ src/demo_pipeline/
 ├── audio.py                      TTS narration + per-scene cache
 ├── actions.py                    built-in scene actions, handler dispatch
 ├── compose.py                    ffmpeg mux, title cards, volume boost
+├── doctor.py                     environment diagnostic (python -m demo_pipeline.doctor)
 └── recording/
     ├── __init__.py               backend dispatch
     ├── timeline.py               scene sequencing, shared by both backends
