@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      # Lint and tests run as steps in one job on purpose: GitHub bills each
+      # job rounded up to a whole minute, so two jobs for ~20s of work costs
+      # two minutes. continue-on-error means one failure still reports the
+      # other, instead of hiding it behind an early exit.
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: ruff check .
+
+      - name: Tests
+        id: tests
+        continue-on-error: true
+        run: pytest tests/ -q
+
+      - name: Result
+        run: |
+          fail=0
+          [ "${{ steps.lint.outcome }}" = "success" ] || { echo "::error::ruff failed"; fail=1; }
+          [ "${{ steps.tests.outcome }}" = "success" ] || { echo "::error::pytest failed"; fail=1; }
+          exit $fail

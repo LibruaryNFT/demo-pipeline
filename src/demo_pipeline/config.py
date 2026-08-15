@@ -187,6 +187,18 @@ class ProjectConfig:
     # xvfb backend only — a persistent Chrome profile directory so an
     # extension or logged-in session survives across runs.
     chrome_profile: Path | None = None
+    # Extra flags appended to the Chrome command line. The xvfb backend
+    # records the whole browser window, so this is where you control what
+    # that window looks like:
+    #   "--kiosk"           fullscreen, no tab strip or address bar
+    #   "--hide-scrollbars" drop the scrollbar from the capture
+    # Leave empty to show the browser frame, which reads as more real when
+    # the demo is about a browser extension.
+    chrome_flags: tuple[str, ...] = ()
+    # Whether the mouse pointer appears in the capture. Off by default: on a
+    # virtual display the pointer never moves, so it just parks a stray arrow
+    # in the middle of the frame.
+    draw_mouse: bool = False
 
     # Working directories — created if missing, derived from output_path
     audio_dir: Path | None = None

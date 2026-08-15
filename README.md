@@ -31,7 +31,19 @@ Requires Python 3.10+, `ffmpeg` and `ffprobe` on PATH, and an OpenAI API key for
 python -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 .venv/bin/python -m playwright install chromium
-export OPENAI_API_KEY=...    # or put it in .env
+export OPENAI_API_KEY=...    # or put it in .env (gitignored)
+```
+
+That is everything the default `playwright` backend needs. The `xvfb` backend additionally wants a virtual X server and a real Chrome, which is Linux only:
+
+```bash
+sudo apt install xvfb ffmpeg      # plus Google Chrome from its own package
+```
+
+Check your setup with the example, which renders against `example.com` and exercises TTS, the browser and ffmpeg end to end:
+
+```bash
+.venv/bin/python examples/example_demo.py
 ```
 
 ## Quick start
@@ -65,6 +77,15 @@ Set `backend=` on the config.
 | Browser | headless Chromium, throwaway profile | real Chrome, persistent profile |
 | Extensions | not supported | supported |
 | Signed-in sessions | via `setup_js` stubbing | real, survives across runs |
+| **What lands in frame** | **page viewport only** | **the whole browser window** |
+
+That last row is the one that surprises people. `playwright` records the viewport, so the video is pure app. `xvfb` records the X display, so the tab strip and address bar are in the shot. That reads as more authentic when the demo is about a browser extension, and as clutter otherwise. To get a clean frame:
+
+```python
+ProjectConfig(backend="xvfb", chrome_flags=("--kiosk", "--hide-scrollbars"), ...)
+```
+
+The mouse pointer is hidden by default (`draw_mouse=False`), because on a virtual display it never moves and would just park a stray arrow mid-frame. Set it `True` if you are demonstrating something cursor-related.
 
 Start with `playwright`. It needs no system setup and covers most demos.
 

@@ -121,6 +121,7 @@ def _launch_chrome(
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-features=Translate",
+            *config.chrome_flags,
             config.start_url,
         ],
         env=env,
@@ -139,6 +140,7 @@ def _start_ffmpeg(
         [
             config.ffmpeg, "-y", "-loglevel", "error",
             "-f", "x11grab",
+            "-draw_mouse", "1" if config.draw_mouse else "0",
             "-video_size", f"{w}x{h}",
             "-framerate", str(config.framerate),
             "-i", config.display_num,
