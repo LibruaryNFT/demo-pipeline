@@ -8,7 +8,22 @@ Built for product demos, launch clips, onboarding walkthroughs, conference submi
 
 ## What it produces
 
-These are frames from [examples/example_demo.py](examples/example_demo.py), which is in the repo and which you can render yourself in about a minute. A branded intro, the app being driven scene by scene in time with the narration, and a closing card built from your `Branding` fields.
+![Intro card fading into the first scene](docs/assets/preview.gif)
+
+Silent, downscaled and cut short. The real file is 1920×1080 with narration.
+
+### Watch the full renders
+
+Both are attached to the [latest release](https://github.com/LibruaryNFT/demo-pipeline/releases/latest), because video does not belong in git history.
+
+| Video | Length | What it shows |
+|---|---|---|
+| [example-demo.mp4](https://github.com/LibruaryNFT/demo-pipeline/releases/latest/download/example-demo.mp4) | 41s | Output of [examples/example_demo.py](examples/example_demo.py), which is in this repo. Render it yourself in about a minute and you get this file back. |
+| [vaultopolis-platform-tour.mp4](https://github.com/LibruaryNFT/demo-pipeline/releases/latest/download/vaultopolis-platform-tour.mp4) | 3m 11s | A real product tour of a production SPA: 13 scenes, wallet state injected so the app renders its signed-in views, narration written to match. Config for it is roughly 350 lines. |
+
+The second one is the honest measure of what this is for. It was originally a one-off script written for a hackathon submission; that script is what got generalised into this package, and the video above was re-rendered by the package to confirm nothing was lost in the move.
+
+### Stills
 
 | | |
 |---|---|
@@ -18,8 +33,6 @@ These are frames from [examples/example_demo.py](examples/example_demo.py), whic
 ![Outro card](docs/assets/03-outro.png)
 
 Outro card. Each line comes from a `Branding` field and is skipped when blank, so this same code renders a one-line card or a four-line one.
-
-The video that produced these is 41 seconds of 1920×1080 with spoken narration; only stills are committed, because the repo should stay small and you can regenerate the video on demand.
 
 ## Status
 
