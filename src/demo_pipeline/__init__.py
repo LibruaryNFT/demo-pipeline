@@ -25,8 +25,10 @@ from .config import (
     BACKEND_PLAYWRIGHT,
     BACKEND_XVFB,
     Branding,
+    Encoding,
     ProjectConfig,
     Scene,
+    Timing,
     TitleCard,
 )
 from .recording import record_screen
@@ -39,8 +41,10 @@ __all__ = [
     "BACKEND_PLAYWRIGHT",
     "BACKEND_XVFB",
     "Branding",
+    "Encoding",
     "ProjectConfig",
     "Scene",
+    "Timing",
     "TitleCard",
     "DEFAULT_ACTION_HANDLERS",
     "generate_audio_segments",

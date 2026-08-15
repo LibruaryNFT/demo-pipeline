@@ -8,13 +8,9 @@ import subprocess
 from pathlib import Path
 
 from .audio import get_duration
-from .config import Branding, ProjectConfig, TitleCard
+from .config import Branding, Encoding, ProjectConfig, TitleCard
 
 logger = logging.getLogger(__name__)
-
-# OpenAI TTS output sits around -25dB, which is inaudible next to normal
-# desktop playback. Applied once at the end so the title cards get it too.
-VOLUME_BOOST_DB = 15
 
 
 def _escape_drawtext(text: str) -> str:
@@ -32,6 +28,23 @@ def _escape_drawtext(text: str) -> str:
     ):
         text = text.replace(char, replacement)
     return text
+
+
+def _encode_args(enc: Encoding) -> list[str]:
+    """Shared ffmpeg output flags, so every stage encodes identically.
+
+    The concat in step 4 is stream-level, so a mismatch between the title
+    cards and the main body shows up as a glitch at the seam rather than an
+    error.
+    """
+    return [
+        "-c:v", enc.video_codec,
+        "-preset", enc.preset,
+        "-crf", str(enc.crf),
+        "-c:a", enc.audio_codec,
+        "-b:a", enc.audio_bitrate,
+        "-pix_fmt", enc.pixel_format,
+    ]
 
 
 def _card_lines(specs: list[tuple[str, str, int, int]]) -> list[dict]:
@@ -54,12 +67,9 @@ def default_intro(name: str, branding: Branding) -> TitleCard:
     )
 
 
-# Vertical space each line occupies, as a multiple of its own font size.
-# A fixed pixel step collides when a 72pt name sits above a 32pt byline.
-LINE_HEIGHT_RATIO = 1.6
-
-
-def default_outro(name: str, branding: Branding) -> TitleCard:
+def default_outro(
+    name: str, branding: Branding, line_height_ratio: float = 1.6
+) -> TitleCard:
     """Name, attribution, link and occasion — each rendered only if set.
 
     Line spacing scales with font size, so a four-line card and a one-line
@@ -73,7 +83,7 @@ def default_outro(name: str, branding: Branding) -> TitleCard:
     ]
     present = [(text, color, size) for text, color, size in rows if text]
 
-    heights = [size * LINE_HEIGHT_RATIO for _, _, size in present]
+    heights = [size * line_height_ratio for _, _, size in present]
 
     # Walk down from the top of the stack, placing each line at its own
     # centre. Kept in floats so a single-line card lands exactly on zero.
@@ -98,8 +108,12 @@ def _build_title_card(config: ProjectConfig, card: TitleCard, out: Path) -> None
             f":fontfile='{config.font}'"
             f":x=(w-text_w)/2:y={y_expr}"
         )
-    fade_out_start = max(card.duration - 1, 0)
-    filters.append(f"fade=in:0:30,fade=out:st={fade_out_start:.0f}:d=1")
+    enc = config.encoding
+    fade_out_start = max(card.duration - enc.card_fade_out_s, 0)
+    filters.append(
+        f"fade=in:0:{enc.fade_in_frames},"
+        f"fade=out:st={fade_out_start:.0f}:d={enc.card_fade_out_s:.0f}"
+    )
     vf = ",".join(filters)
 
     subprocess.run(
@@ -109,8 +123,7 @@ def _build_title_card(config: ProjectConfig, card: TitleCard, out: Path) -> None
             "-i", f"color=c={card.bg_color}:s={w}x{h}:d={card.duration}",
             "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
             "-vf", vf,
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-c:a", "aac",
+            *_encode_args(enc),
             "-shortest", "-t", str(card.duration),
             str(out),
         ],
@@ -124,6 +137,7 @@ def compose_final(
 ) -> Path:
     """Combine narration + screen capture + intro/outro into the final mp4."""
     work = config.work_dir
+    enc = config.encoding
     work.mkdir(parents=True, exist_ok=True)
 
     # 1. Concat narration MP3 segments
@@ -156,12 +170,13 @@ def compose_final(
             config.ffmpeg, "-y", "-loglevel", "error",
             "-i", str(screen_video),
             "-i", str(combined_audio),
-            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-            "-c:a", "aac", "-b:a", "192k",
+            *_encode_args(enc),
             "-t", str(audio_dur),
             "-vf",
-            f"scale={w}:{h},fade=in:0:30,fade=out:st={audio_dur - 2:.0f}:d=2",
-            "-shortest", "-pix_fmt", "yuv420p",
+            f"scale={w}:{h},"
+            f"fade=in:0:{enc.fade_in_frames},"
+            f"fade=out:st={audio_dur - enc.fade_out_s:.0f}:d={enc.fade_out_s:.0f}",
+            "-shortest",
             str(raw_merged),
         ],
         check=True,
@@ -170,7 +185,9 @@ def compose_final(
 
     # 3. Build intro + outro cards
     intro_card = config.intro or default_intro(config.name, config.branding)
-    outro_card = config.outro or default_outro(config.name, config.branding)
+    outro_card = config.outro or default_outro(
+        config.name, config.branding, enc.line_height_ratio
+    )
     intro_mp4 = work / "intro.mp4"
     outro_mp4 = work / "outro.mp4"
     _build_title_card(config, intro_card, intro_mp4)
@@ -187,9 +204,7 @@ def compose_final(
             "-filter_complex",
             "[0:v][0:a][1:v][1:a][2:v][2:a]concat=n=3:v=1:a=1[outv][outa]",
             "-map", "[outv]", "-map", "[outa]",
-            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-            "-c:a", "aac", "-b:a", "192k",
-            "-pix_fmt", "yuv420p",
+            *_encode_args(enc),
             str(pre_boost),
         ],
         check=True,
@@ -204,8 +219,8 @@ def compose_final(
             config.ffmpeg, "-y", "-loglevel", "error",
             "-i", str(pre_boost),
             "-c:v", "copy",
-            "-af", f"volume={VOLUME_BOOST_DB}dB",
-            "-c:a", "aac",
+            "-af", f"volume={enc.volume_boost_db}dB",
+            "-c:a", enc.audio_codec,
             str(final),
         ],
         check=True,

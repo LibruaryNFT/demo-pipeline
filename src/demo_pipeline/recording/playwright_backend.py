@@ -11,11 +11,10 @@ either of those, use the xvfb backend instead.
 
 import asyncio
 import logging
-import time
 from pathlib import Path
 
-from ..actions import resolve_handlers, run_scene_action
 from ..config import ProjectConfig
+from .timeline import apply_setup_js, play_scenes
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +24,11 @@ async def record(config: ProjectConfig, segments: list[dict]) -> Path:
     from playwright.async_api import async_playwright
 
     w, h = config.resolution
+    timing = config.timing
     video_dir = config.work_dir / "screen_recording"
     video_dir.mkdir(parents=True, exist_ok=True)
 
-    # Clear stale captures so we can identify this run's output unambiguously.
+    # Clear stale captures so this run's output is identifiable.
     for stale in video_dir.glob("*.webm"):
         stale.unlink()
 
@@ -44,51 +44,22 @@ async def record(config: ProjectConfig, segments: list[dict]) -> Path:
         )
         page = await context.new_page()
 
-        await page.goto(config.start_url, wait_until="networkidle", timeout=30000)
-        await asyncio.sleep(2.0)
+        await page.goto(
+            config.start_url,
+            wait_until=timing.wait_until,
+            timeout=timing.page_load_ms,
+        )
+        await asyncio.sleep(timing.startup_s)
 
-        if config.setup_js:
-            await page.evaluate(config.setup_js)
-            await asyncio.sleep(0.5)
+        await apply_setup_js(page, config)
+        await play_scenes(page, config, segments)
 
-        handlers = resolve_handlers(config)
-
-        # Absolute timeline: each scene ends at a fixed offset from t0, so a
-        # slow action steals from its own scene rather than shifting every
-        # later scene out of sync with the narration.
-        t0 = time.monotonic()
-        elapsed = 0.0
-        for i, seg in enumerate(segments):
-            scene = seg["scene"]
-            dur = seg["duration"]
-            scene_end = elapsed + dur
-            logger.info(
-                "[%d/%d] %s -> %s (%.1fs)",
-                i + 1, len(segments), scene.id, scene.action, dur,
-            )
-
-            await run_scene_action(handlers, page, scene, dur)
-
-            # A navigation tears down the injected state, so reapply it.
-            if config.setup_js and scene.action == "navigate":
-                try:
-                    await page.evaluate(config.setup_js)
-                except Exception as e:
-                    logger.warning("setup_js re-injection failed: %s", e)
-
-            wait_for = (t0 + scene_end) - time.monotonic()
-            if wait_for > 0:
-                await asyncio.sleep(wait_for)
-            elapsed = scene_end
-
-        await asyncio.sleep(2.0)
+        await asyncio.sleep(timing.tail_s)
         await context.close()
         await browser.close()
 
     videos = list(video_dir.glob("*.webm"))
     if not videos:
-        raise RuntimeError(
-            f"recording produced no video file in {video_dir}"
-        )
+        raise RuntimeError(f"recording produced no video file in {video_dir}")
     logger.info("screen recording done: %s", videos[0])
     return videos[0]

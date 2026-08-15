@@ -12,7 +12,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from demo_pipeline import Branding, ProjectConfig, Scene, TitleCard, render
+from demo_pipeline import Branding, ProjectConfig, Scene, Timing, TitleCard, render
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -22,7 +22,8 @@ APP_URL = "https://example.com"
 
 # ── Custom action handlers ─────────────────────────────────────────────────
 #
-# Built-in verbs (wait, scroll, navigate, click, hover) cover most scenes.
+# Built-in verbs (wait, scroll, navigate, click, hover, evaluate) cover most
+# scenes.
 # Define your own when a scene needs several steps. The signature is always
 # (page, params, duration) -> seconds spent; the engine sleeps the remainder.
 
@@ -104,6 +105,9 @@ CONFIG = ProjectConfig(
     ),
     scenes=SCENES,
     action_handlers={"highlight_heading": highlight_heading},
+    # Defaults suit most apps. Override when yours is slower, or renders
+    # after XHR rather than on DOMContentLoaded.
+    timing=Timing(settle_s=2.0),
     # Custom cards override the branding-generated defaults entirely.
     intro=TitleCard(
         duration=3.5,

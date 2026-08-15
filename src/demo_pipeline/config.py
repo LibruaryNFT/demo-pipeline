@@ -89,6 +89,73 @@ class Branding:
 
 
 @dataclass
+class Encoding:
+    """ffmpeg encode settings and fade timings.
+
+    Defaults target a quick demo: fast enough to iterate on, good enough to
+    put in front of people. Raise `crf` for smaller files, lower it for
+    sharper text.
+    """
+
+    video_codec: str = "libx264"
+    preset: str = "medium"
+    crf: int = 23
+    pixel_format: str = "yuv420p"
+    audio_codec: str = "aac"
+    audio_bitrate: str = "192k"
+
+    # The capture preset is separate: it runs live during recording, so it
+    # trades file size for not dropping frames.
+    capture_preset: str = "ultrafast"
+
+    # OpenAI TTS output sits around -25dB, inaudible next to normal desktop
+    # playback. Applied once at the end so title cards get it too.
+    volume_boost_db: int = 15
+
+    fade_in_frames: int = 30
+    fade_out_s: float = 2.0
+    card_fade_out_s: float = 1.0
+
+    # Vertical space each title-card line occupies, as a multiple of its own
+    # font size. A fixed pixel step collides when a large name sits above a
+    # small byline.
+    line_height_ratio: float = 1.6
+
+
+@dataclass
+class Timing:
+    """Waits and timeouts, in seconds unless the name says milliseconds.
+
+    Defaults suit a typical SPA on a decent connection. Bump `page_load_s`
+    and `settle_s` for a heavy app, or drop them to tighten a quick demo.
+    """
+
+    # How to decide a navigation is done. "domcontentloaded" is fast and
+    # works for most apps; "networkidle" waits for XHR to quiesce, which
+    # suits data-heavy dashboards but hangs on pages that poll.
+    wait_until: str = "domcontentloaded"
+
+    page_load_ms: int = 30000
+    navigate_ms: int = 15000
+    selector_ms: int = 5000
+
+    # Pause after the initial load, before the first scene runs.
+    startup_s: float = 3.0
+    # Pause after a navigation or click, to let the UI settle.
+    settle_s: float = 2.5
+    # Pause after a scroll completes.
+    scroll_s: float = 1.2
+    # Tail recorded after the last scene, so the video does not cut dead.
+    tail_s: float = 2.0
+
+    # xvfb backend only.
+    cdp_timeout_s: float = 25.0
+    xvfb_startup_s: float = 1.5
+    chrome_kill_wait_s: float = 2.0
+    ffmpeg_flush_s: float = 15.0
+
+
+@dataclass
 class ProjectConfig:
     """Full configuration for a single demo render."""
 
@@ -128,6 +195,11 @@ class ProjectConfig:
     # Rendering knobs
     resolution: tuple[int, int] = (1920, 1080)
     framerate: int = 30
+    encoding: Encoding = field(default_factory=Encoding)
+    timing: Timing = field(default_factory=Timing)
+
+    # xvfb backend only. Both must be unique per concurrent render on the
+    # same machine, or two runs will fight over the display and the port.
     display_num: str = ":99"
     cdp_port: int = 9222
 
@@ -136,10 +208,23 @@ class ProjectConfig:
     tts_speed: float = 0.92
     tts_model: str = "tts-1-hd"
 
+    # A cached narration MP3 smaller than this is treated as a failed write
+    # and regenerated rather than reused.
+    min_audio_bytes: int = 1000
+    # A capture smaller than this means the recorder produced nothing usable.
+    min_video_bytes: int = 10_000
+
     # Tool paths
     ffmpeg: str = "ffmpeg"
     ffprobe: str = "ffprobe"
     font: str = field(default_factory=default_font)
+    # Checked in order; the first one on PATH is used. xvfb backend only.
+    chrome_binaries: tuple[str, ...] = (
+        "google-chrome",
+        "google-chrome-stable",
+        "chromium",
+        "chromium-browser",
+    )
 
     def __post_init__(self) -> None:
         self.output_path = Path(self.output_path)

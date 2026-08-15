@@ -93,10 +93,28 @@ A scene names its action as a string. The engine resolves built-ins first, then 
 | Action | Params | Behaviour |
 |---|---|---|
 | `wait` | | Hold the current view for the scene's duration |
-| `scroll` | `y: int` | Smooth-scroll to a y offset |
-| `navigate` | `url: str` | Go to a URL, wait for DOM, settle |
-| `click` | `selector: str`, `settle: float = 2.0` | Click by selector, then settle |
-| `hover` | `selector: str` | Hover without clicking, for drawing attention to a control you do not want to fire |
+| `scroll` | `y`, `relative: bool`, `behavior`, `wait` | Scroll to (or by) a y offset |
+| `navigate` | `url`, `wait_until`, `settle`, `timeout_ms` | Go to a URL, wait for load, settle |
+| `click` | `selector: str \| list`, `settle`, `timeout_ms` | Click by selector; a list is tried in order until one works |
+| `hover` | `selector`, `settle`, `timeout_ms` | Hover without clicking, for drawing attention to a control you do not want to fire |
+| `evaluate` | `js: str`, `settle` | Run arbitrary JS, without defining a handler |
+
+Every param falls back to the project's `Timing` defaults, so a single slow scene can be tuned in place rather than by slowing the whole render:
+
+```python
+Scene(id="load", narration="...", action="navigate",
+      action_params={"url": "/reports", "settle": 6.0})
+```
+
+`click` accepting a list matters more than it looks. A UI that renders a control as a button in one state and a tab in another needs candidates, and that pattern showed up in every real demo we checked:
+
+```python
+Scene(id="flip", narration="...", action="click",
+      action_params={"selector": [
+          "button:has-text('Burn')",
+          "[role='tab']:has-text('Redeem')",
+      ]})
+```
 
 Custom handlers are async with signature `(page, params, duration) -> float`, returning the seconds spent on the active part. `page` is a Playwright Page under both backends.
 
@@ -124,7 +142,7 @@ ProjectConfig(
 )
 ```
 
-Under the `playwright` backend it is re-injected after any `navigate` action, since a page load tears the state down.
+A page load tears injected state down, so the engine re-applies `setup_js` whenever a scene changes the page URL. That covers both a built-in `navigate` and a custom handler doing its own `page.goto`, without the handler needing to know anything about it.
 
 ## Branding and title cards
 
@@ -143,6 +161,29 @@ Branding(
 Line spacing scales with font size, so cards with one line and four lines are both centred and neither collides.
 
 For full control, pass `intro=` / `outro=` as `TitleCard` objects and the generated defaults are bypassed entirely.
+
+## Tuning
+
+Defaults target a quick demo: fast to iterate on, good enough to put in front of people. Nothing is baked in, so when a default does not suit, override it rather than patching the engine.
+
+```python
+from demo_pipeline import Encoding, ProjectConfig, Timing
+
+ProjectConfig(
+    ...,
+    encoding=Encoding(crf=18, preset="slow", volume_boost_db=12),
+    timing=Timing(wait_until="networkidle", settle_s=4.0, page_load_ms=60000),
+)
+```
+
+`Encoding` covers codecs, `crf`, preset, audio bitrate, the volume boost, fade timings, and title-card line spacing. `Timing` covers every wait and timeout, including the xvfb backend's CDP and Xvfb startup budgets.
+
+Two settings worth knowing about:
+
+- **`timing.wait_until`** defaults to `domcontentloaded`, which is fast and correct for most apps. Use `networkidle` for a data-heavy dashboard that renders after XHR, but not for a page that polls, because it will never go idle.
+- **`display_num` and `cdp_port`** (xvfb only) must be unique per concurrent render on one machine, or two runs will fight over the display and the port.
+
+Tool paths (`ffmpeg`, `ffprobe`, `font`) and the Chrome binary search order (`chrome_binaries`) are config too, so a machine with unusual paths needs no code change.
 
 ## Narration caching
 
@@ -165,12 +206,15 @@ For an end-to-end check that does exercise TTS, the browser and ffmpeg, run the 
 
 ```
 src/demo_pipeline/
-├── config.py                     ProjectConfig, Scene, TitleCard, Branding
+├── config.py                     ProjectConfig, Scene, TitleCard, Branding, Encoding, Timing
 ├── audio.py                      TTS narration + per-scene cache
 ├── actions.py                    built-in scene actions, handler dispatch
 ├── compose.py                    ffmpeg mux, title cards, volume boost
 └── recording/
     ├── __init__.py               backend dispatch
+    ├── timeline.py               scene sequencing, shared by both backends
     ├── playwright_backend.py     cross-platform, headless
     └── xvfb_backend.py           Linux, real Chrome over CDP
 ```
+
+The backends differ only in how they capture frames. Scene sequencing lives in `timeline.py`, so the two cannot drift apart.

@@ -51,7 +51,7 @@ def generate_audio_segments(config: ProjectConfig) -> list[dict]:
     for i, scene in enumerate(config.scenes):
         audio_path = config.audio_dir / f"seg_{i:02d}_{scene.id}.mp3"
 
-        if audio_path.exists() and audio_path.stat().st_size > 1000:
+        if audio_path.exists() and audio_path.stat().st_size > config.min_audio_bytes:
             duration = get_duration(config.ffprobe, audio_path)
             logger.info(
                 "[%d/%d] cached %s (%.1fs)",
