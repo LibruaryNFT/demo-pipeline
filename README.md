@@ -247,6 +247,18 @@ Each scene's MP3 is cached on disk as `seg_NN_<scene_id>.mp3` in the `*_audio` d
 
 Iterating on choreography while leaving narration alone costs nothing in API calls.
 
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI runs, and what makes a change likely to land.
+
+macOS and Windows reports are especially useful: the default backend is cross-platform by construction but has only been exercised on Linux.
+
+## Licence
+
+Apache License 2.0 — see [LICENSE](LICENSE).
+
+You can use this commercially, modify it, and redistribute it. In return the licence asks that you keep the copyright and [NOTICE](NOTICE) intact and state what you changed, so **if you build something on this, please credit the project**. That is the whole ask.
+
 ## Development
 
 ```bash
