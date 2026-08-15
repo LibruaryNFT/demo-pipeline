@@ -6,13 +6,29 @@ You write the narration and describe the scenes. The pipeline generates the voic
 
 Built for product demos, launch clips, onboarding walkthroughs, conference submissions, and anything else where you would otherwise open a screen recorder and fumble the first take.
 
+## What it produces
+
+These are frames from [examples/example_demo.py](examples/example_demo.py), which is in the repo and which you can render yourself in about a minute. A branded intro, the app being driven scene by scene in time with the narration, and a closing card built from your `Branding` fields.
+
+| | |
+|---|---|
+| ![Intro card](docs/assets/01-intro.png) | ![A scene mid-action](docs/assets/02-scene.png) |
+| Intro card, generated from `name` + `Branding.tagline` | A scene running a custom action — here the handler outlines the page heading |
+
+![Outro card](docs/assets/03-outro.png)
+
+Outro card. Each line comes from a `Branding` field and is skipped when blank, so this same code renders a one-line card or a four-line one.
+
+The video that produced these is 41 seconds of 1920×1080 with spoken narration; only stills are committed, because the repo should stay small and you can regenerate the video on demand.
+
 ## Status
 
 Working and used, but young. What has actually been exercised, so you know where the edges are:
 
 - Both backends verified end to end on Linux, output inspected frame by frame.
 - The `playwright` backend is cross-platform *by construction* (Playwright's own recorder plus ffmpeg, with per-OS font defaults). It has **not** been run on macOS or Windows. If you are the first, expect the font path to be the thing that needs attention.
-- Demos have been rendered against simple public pages. A heavy SPA will likely want `timing.wait_until="networkidle"` and a larger `settle_s`.
+- Exercised on a real production SPA as well as simple public pages: a 13-scene, 3-minute tour rendered to the microsecond against a reference cut.
+- For a heavy SPA, raise `timing.settle_s` rather than switching `wait_until` to `networkidle`. That was the original advice here and testing contradicted it — an app that polls never goes idle, so `networkidle` burns the full timeout and fails the scene. The default `domcontentloaded` plus a longer settle is the reliable combination.
 - Narration costs money. OpenAI TTS is billed per character, so a 60-second script is fractions of a cent, but a render loop with the cache disabled is not free.
 
 ## How it works
@@ -95,6 +111,7 @@ Set `backend=` on the config.
 | Browser | headless Chromium, throwaway profile | real Chrome, persistent profile |
 | Extensions | not supported | supported |
 | Signed-in sessions | via `setup_js` stubbing | real, survives across runs |
+| Framerate control | no (Playwright picks; 25fps in practice) | yes, via `framerate` |
 | **What lands in frame** | **page viewport only** | **the whole browser window** |
 
 That last row is the one that surprises people. `playwright` records the viewport, so the video is pure app. `xvfb` records the X display, so the tab strip and address bar are in the shot. That reads as more authentic when the demo is about a browser extension, and as clutter otherwise. To get a clean frame:
@@ -211,7 +228,7 @@ from demo_pipeline import Encoding, ProjectConfig, Timing
 ProjectConfig(
     ...,
     encoding=Encoding(crf=18, preset="slow", volume_boost_db=12),
-    timing=Timing(wait_until="networkidle", settle_s=4.0, page_load_ms=60000),
+    timing=Timing(settle_s=4.0, page_load_ms=60000),
 )
 ```
 

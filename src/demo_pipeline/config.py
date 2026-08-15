@@ -18,6 +18,9 @@ ActionHandler = Callable[..., Awaitable[float]]
 BACKEND_PLAYWRIGHT = "playwright"
 BACKEND_XVFB = "xvfb"
 
+# Only meaningful on the xvfb backend; see ProjectConfig.framerate.
+DEFAULT_FRAMERATE = 30
+
 _FONT_CANDIDATES = {
     "Linux": [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -206,7 +209,11 @@ class ProjectConfig:
 
     # Rendering knobs
     resolution: tuple[int, int] = (1920, 1080)
-    framerate: int = 30
+    # xvfb backend only. Playwright's recorder exposes no framerate control,
+    # so on that backend the capture rate is whatever Playwright chooses
+    # (25fps in practice) and this value is ignored. The engine warns rather
+    # than pretending it applied.
+    framerate: int = DEFAULT_FRAMERATE
     encoding: Encoding = field(default_factory=Encoding)
     timing: Timing = field(default_factory=Timing)
 

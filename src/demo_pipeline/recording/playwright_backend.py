@@ -13,7 +13,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from ..config import ProjectConfig
+from ..config import DEFAULT_FRAMERATE, ProjectConfig
 from .timeline import apply_setup_js, play_scenes
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,15 @@ async def record(config: ProjectConfig, segments: list[dict]) -> Path:
 
     total_duration = sum(s["duration"] for s in segments)
     logger.info("recording target duration: %.1fs", total_duration)
+
+    # Playwright's recorder has no framerate setting, so a configured value
+    # cannot be honoured here. Say so instead of silently ignoring it.
+    if config.framerate != DEFAULT_FRAMERATE:
+        logger.warning(
+            "framerate=%d ignored: the playwright backend records at "
+            "Playwright's own rate. Use backend='xvfb' to control framerate.",
+            config.framerate,
+        )
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)

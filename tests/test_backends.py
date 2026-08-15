@@ -138,3 +138,31 @@ def _chrome_args(config):
     finally:
         subprocess.Popen = real_popen
     return captured["cmd"]
+
+
+class TestFramerateHonesty:
+    """framerate only applies to xvfb; the other backend must say so."""
+
+    def test_default_framerate_is_shared_not_duplicated(self):
+        from demo_pipeline.config import DEFAULT_FRAMERATE
+        from demo_pipeline.recording import playwright_backend
+
+        assert playwright_backend.DEFAULT_FRAMERATE == DEFAULT_FRAMERATE
+        assert make_config().framerate == DEFAULT_FRAMERATE
+
+    def test_xvfb_passes_framerate_to_ffmpeg(self):
+        args = _ffmpeg_args(xvfb_config(framerate=60))
+        assert args[args.index("-framerate") + 1] == "60"
+
+    async def test_playwright_warns_when_framerate_is_set(self, caplog):
+        # Playwright's recorder has no framerate control, so a configured
+        # value cannot be honoured. Silently ignoring it is the bug.
+        from demo_pipeline.recording import playwright_backend
+
+        config = make_config(framerate=60)
+        with caplog.at_level("WARNING"):
+            try:
+                await playwright_backend.record(config, [])
+            except Exception:
+                pass  # no browser here; we only care about the warning
+        assert any("framerate=60 ignored" in r.message for r in caplog.records)
