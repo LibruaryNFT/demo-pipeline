@@ -53,14 +53,38 @@ def _git(*args: str) -> str:
     ).stdout
 
 
+def _git_bytes(*args: str) -> bytes:
+    return subprocess.run(["git", *args], capture_output=True, check=True).stdout
+
+
+def _as_text(raw: bytes) -> str | None:
+    """Decode a blob for scanning, or None if it is binary.
+
+    Binary must be skipped rather than decoded. Compressed bytes are
+    effectively random, so a PNG will sooner or later contain 64 characters
+    that look like a hex secret — which is a false positive that trains
+    people to ignore the scanner. A NUL byte is the same heuristic git
+    itself uses to decide a file is binary.
+    """
+    if b"\x00" in raw:
+        return None
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
 def scan_tracked() -> int:
     failures = 0
     for path in _git("ls-files").splitlines():
         if path in ALLOWLIST:
             continue
         try:
-            content = _git("show", f"HEAD:{path}")
+            raw = _git_bytes("show", f"HEAD:{path}")
         except subprocess.CalledProcessError:
+            continue
+        content = _as_text(raw)
+        if content is None:
             continue
         for name, excerpt in scan_text(content):
             print(f"{path}: possible {name} ({excerpt})")
@@ -81,8 +105,11 @@ def scan_history() -> int:
             kind = _git("cat-file", "-t", sha).strip()
             if kind != "blob":
                 continue
-            content = _git("cat-file", "-p", sha)
-        except (subprocess.CalledProcessError, UnicodeDecodeError):
+            raw = _git_bytes("cat-file", "-p", sha)
+        except subprocess.CalledProcessError:
+            continue
+        content = _as_text(raw)
+        if content is None:
             continue
         for name, excerpt in scan_text(content):
             print(f"{sha} ({path or 'unknown path'}): possible {name} ({excerpt})")

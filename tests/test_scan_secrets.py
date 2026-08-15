@@ -73,3 +73,33 @@ class TestRepoIsClean:
 
     def test_full_history_has_no_secrets(self):
         assert scan_secrets.main(["--history"]) == 0
+
+
+class TestBinaryHandling:
+    """Binary blobs must be skipped, not decoded and scanned.
+
+    Regression: committing PNG screenshots turned the scan red. Compressed
+    bytes are effectively random, so an image eventually contains 64
+    characters matching the hex-secret pattern. CI caught it; a local run
+    had passed only because the images were not committed yet.
+    """
+
+    def test_nul_bytes_mark_content_as_binary(self):
+        assert scan_secrets._as_text(b"\x89PNG\r\n\x1a\n\x00\x00binary") is None
+
+    def test_invalid_utf8_is_treated_as_binary(self):
+        assert scan_secrets._as_text(b"\xff\xfe\xfd\xfc") is None
+
+    def test_plain_text_still_decodes(self):
+        assert scan_secrets._as_text(b"hello = 1\n") == "hello = 1\n"
+
+    def test_a_real_committed_png_is_skipped(self):
+        png = Path(__file__).resolve().parents[1] / "docs/assets/01-intro.png"
+        assert png.exists(), "example still is missing"
+        assert scan_secrets._as_text(png.read_bytes()) is None
+
+    def test_hex_run_inside_binary_would_otherwise_have_matched(self):
+        # Proves the skip is load-bearing rather than incidental.
+        payload = b"\x00" + (b"a" * 64)
+        assert scan_secrets.scan_text(payload.decode("latin-1"))
+        assert scan_secrets._as_text(payload) is None
