@@ -6,6 +6,15 @@ You write the narration and describe the scenes. The pipeline generates the voic
 
 Built for product demos, launch clips, onboarding walkthroughs, conference submissions, and anything else where you would otherwise open a screen recorder and fumble the first take.
 
+## Status
+
+Working and used, but young. What has actually been exercised, so you know where the edges are:
+
+- Both backends verified end to end on Linux, output inspected frame by frame.
+- The `playwright` backend is cross-platform *by construction* (Playwright's own recorder plus ffmpeg, with per-OS font defaults). It has **not** been run on macOS or Windows. If you are the first, expect the font path to be the thing that needs attention.
+- Demos have been rendered against simple public pages. A heavy SPA will likely want `timing.wait_until="networkidle"` and a larger `settle_s`.
+- Narration costs money. OpenAI TTS is billed per character, so a 60-second script is fractions of a cent, but a render loop with the cache disabled is not free.
+
 ## How it works
 
 Three stages. Each is independently usable if you only need part of it.
@@ -72,7 +81,7 @@ Set `backend=` on the config.
 
 | | `playwright` (default) | `xvfb` |
 |---|---|---|
-| Platforms | Linux, macOS, Windows | Linux only |
+| Platforms | Linux, macOS, Windows (only Linux tested) | Linux only |
 | Setup | `playwright install chromium` | Xvfb, system Chrome, a dedicated profile |
 | Browser | headless Chromium, throwaway profile | real Chrome, persistent profile |
 | Extensions | not supported | supported |
