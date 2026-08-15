@@ -47,6 +47,22 @@ def _encode_args(enc: Encoding) -> list[str]:
     ]
 
 
+def fade_filter(clip_s: float, fade_in_frames: int, fade_out_s: float) -> str:
+    """Build an ffmpeg fade chain that is safe for very short clips.
+
+    A naive `st = clip - fade_out` goes negative once the clip is shorter
+    than the fade, and ffmpeg rejects a negative start time outright. That
+    only shows up on short demos, so it survives every long test. Clamp the
+    fade to the clip and never start before zero.
+    """
+    out_dur = max(min(fade_out_s, clip_s / 2), 0.0)
+    start = max(clip_s - out_dur, 0.0)
+    parts = [f"fade=in:0:{fade_in_frames}"]
+    if out_dur > 0:
+        parts.append(f"fade=out:st={start:.2f}:d={out_dur:.2f}")
+    return ",".join(parts)
+
+
 def _card_lines(specs: list[tuple[str, str, int, int]]) -> list[dict]:
     """Build drawtext line dicts, dropping any whose text is blank."""
     return [
@@ -109,10 +125,8 @@ def _build_title_card(config: ProjectConfig, card: TitleCard, out: Path) -> None
             f":x=(w-text_w)/2:y={y_expr}"
         )
     enc = config.encoding
-    fade_out_start = max(card.duration - enc.card_fade_out_s, 0)
     filters.append(
-        f"fade=in:0:{enc.fade_in_frames},"
-        f"fade=out:st={fade_out_start:.0f}:d={enc.card_fade_out_s:.0f}"
+        fade_filter(card.duration, enc.fade_in_frames, enc.card_fade_out_s)
     )
     vf = ",".join(filters)
 
@@ -174,8 +188,7 @@ def compose_final(
             "-t", str(audio_dur),
             "-vf",
             f"scale={w}:{h},"
-            f"fade=in:0:{enc.fade_in_frames},"
-            f"fade=out:st={audio_dur - enc.fade_out_s:.0f}:d={enc.fade_out_s:.0f}",
+            + fade_filter(audio_dur, enc.fade_in_frames, enc.fade_out_s),
             "-shortest",
             str(raw_merged),
         ],
