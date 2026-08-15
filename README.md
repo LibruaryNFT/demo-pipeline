@@ -1,0 +1,176 @@
+# demo-pipeline
+
+Narrated screen-recording demo videos for any web app, rendered from a config file.
+
+You write the narration and describe the scenes. The pipeline generates the voiceover, drives a real browser through your app in time with it, and cuts the result together with intro and outro cards. Re-running produces the same video, so changing one line of narration means re-rendering rather than re-recording.
+
+Built for product demos, launch clips, onboarding walkthroughs, conference submissions, and anything else where you would otherwise open a screen recorder and fumble the first take.
+
+## How it works
+
+Three stages. Each is independently usable if you only need part of it.
+
+```
+[narration text]          [scenes + actions]         [branding / cards]
+       |                          |                          |
+       v                          v                          v
+   audio.py                  recording/                  compose.py
+   ---------                 ----------                  ----------
+   OpenAI TTS                browser automation          ffmpeg concat
+   cached per scene          timed to the audio          title cards
+   -> .mp3 per scene         -> screen capture           -> final .mp4
+```
+
+Scene length is driven by how long its narration takes to speak. The recorder runs each scene's action, then holds until that scene's absolute end time, so a slow click steals from its own scene rather than pushing everything after it out of sync.
+
+## Install
+
+Requires Python 3.10+, `ffmpeg` and `ffprobe` on PATH, and an OpenAI API key for the narration.
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -e ".[dev]"
+.venv/bin/python -m playwright install chromium
+export OPENAI_API_KEY=...    # or put it in .env
+```
+
+## Quick start
+
+```python
+from demo_pipeline import Branding, ProjectConfig, Scene, render
+
+render(ProjectConfig(
+    name="My App",
+    output_path="out/demo.mp4",
+    start_url="https://myapp.example",
+    branding=Branding(tagline="Does the thing", author="Me", link="myapp.example"),
+    scenes=[
+        Scene(id="hook",   narration="Here is the problem.",  action="wait"),
+        Scene(id="tour",   narration="Here is the fix.",      action="scroll", action_params={"y": 600}),
+        Scene(id="close",  narration="Try it today.",         action="wait"),
+    ],
+))
+```
+
+A complete worked example, including a custom action handler, is in [examples/example_demo.py](examples/example_demo.py). Run it against `example.com` to check your setup end to end.
+
+## Recording backends
+
+Set `backend=` on the config.
+
+| | `playwright` (default) | `xvfb` |
+|---|---|---|
+| Platforms | Linux, macOS, Windows | Linux only |
+| Setup | `playwright install chromium` | Xvfb, system Chrome, a dedicated profile |
+| Browser | headless Chromium, throwaway profile | real Chrome, persistent profile |
+| Extensions | not supported | supported |
+| Signed-in sessions | via `setup_js` stubbing | real, survives across runs |
+
+Start with `playwright`. It needs no system setup and covers most demos.
+
+Reach for `xvfb` when the demo has to show something headless Chromium cannot reproduce: a browser extension, or a genuinely signed-in session. It exists because of three constraints that are worth knowing before you debug it:
+
+1. Playwright's bundled Chromium refuses to run on some recent Linux distributions, and the check is in the installer. So `xvfb` launches the system Chrome and attaches over CDP instead of letting Playwright launch it.
+2. Real browser extensions do not load in legacy headless mode.
+3. GNOME Wayland blocks `ffmpeg -f x11grab` from capturing XWayland clients even with Chrome forced to `--ozone-platform=x11`; the frame comes out solid black. Xvfb is a real X server with no Wayland involved, so x11grab works against it.
+
+A virtual display also makes recordings deterministic, since no notification popup can wander into frame.
+
+`xvfb` requires `chrome_profile`. Chrome 148+ refuses a remote-debugging port on the default profile, so point it somewhere else:
+
+```python
+ProjectConfig(
+    backend="xvfb",
+    chrome_profile="~/.config/chrome-demo-profile",
+    ...
+)
+```
+
+## Scenes and actions
+
+A scene names its action as a string. The engine resolves built-ins first, then your `action_handlers` overrides, so you can replace a built-in or add your own verb.
+
+| Action | Params | Behaviour |
+|---|---|---|
+| `wait` | | Hold the current view for the scene's duration |
+| `scroll` | `y: int` | Smooth-scroll to a y offset |
+| `navigate` | `url: str` | Go to a URL, wait for DOM, settle |
+| `click` | `selector: str`, `settle: float = 2.0` | Click by selector, then settle |
+| `hover` | `selector: str` | Hover without clicking, for drawing attention to a control you do not want to fire |
+
+Custom handlers are async with signature `(page, params, duration) -> float`, returning the seconds spent on the active part. `page` is a Playwright Page under both backends.
+
+```python
+async def open_settings(page, params, duration):
+    await page.click("button:has-text('Settings')")
+    await page.wait_for_selector(".settings-panel")
+    return 2.0
+
+ProjectConfig(..., action_handlers={"open_settings": open_settings})
+```
+
+Prefer text-based selectors like `button:has-text('Save')` over class selectors. The rendered UI is the source of truth and `:has-text` survives most class renames.
+
+A handler that throws is logged and skipped. One broken selector costs that scene's choreography, not the whole render.
+
+## Showing populated state without real credentials
+
+`setup_js` is arbitrary JavaScript evaluated once after the page loads. Use it to stub an API, seed local storage, or mock a browser extension so the demo shows a full, realistic screen without you signing in as anyone.
+
+```python
+ProjectConfig(
+    setup_js="window.__API_MOCK__ = { user: 'Demo User', items: 42 };",
+    ...
+)
+```
+
+Under the `playwright` backend it is re-injected after any `navigate` action, since a page load tears the state down.
+
+## Branding and title cards
+
+`Branding` auto-generates the intro and outro. Every field is optional and blank fields are skipped, so a bare `Branding()` still gives you a clean name-only card.
+
+```python
+Branding(
+    tagline="Does the thing",   # intro, under the name
+    author="Your Name",         # outro, rendered as "Built by ..."
+    link="myapp.example",       # outro
+    context="Internal Demo",    # outro, free text for the occasion
+    accent="0x50c878",          # heading colour
+)
+```
+
+Line spacing scales with font size, so cards with one line and four lines are both centred and neither collides.
+
+For full control, pass `intro=` / `outro=` as `TitleCard` objects and the generated defaults are bypassed entirely.
+
+## Narration caching
+
+Each scene's MP3 is cached on disk as `seg_NN_<scene_id>.mp3` in the `*_audio` directory next to your output. The filename is the whole cache key, so **if you change a scene's narration text, delete its MP3** or the old audio will be reused.
+
+Iterating on choreography while leaving narration alone costs nothing in API calls.
+
+## Development
+
+```bash
+.venv/bin/python -m pytest tests/ -q
+.venv/bin/ruff check .
+```
+
+The test suite covers config validation, title-card layout, drawtext escaping, ffprobe parsing, the audio cache, and action dispatch. It does not touch the network or spawn a browser, so it runs in about a second.
+
+For an end-to-end check that does exercise TTS, the browser and ffmpeg, run the example.
+
+## Layout
+
+```
+src/demo_pipeline/
+├── config.py                     ProjectConfig, Scene, TitleCard, Branding
+├── audio.py                      TTS narration + per-scene cache
+├── actions.py                    built-in scene actions, handler dispatch
+├── compose.py                    ffmpeg mux, title cards, volume boost
+└── recording/
+    ├── __init__.py               backend dispatch
+    ├── playwright_backend.py     cross-platform, headless
+    └── xvfb_backend.py           Linux, real Chrome over CDP
+```
