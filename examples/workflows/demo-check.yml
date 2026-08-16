@@ -20,11 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: LibruaryNFT/onetake@main
+      - uses: LibruaryNFT/demotape@main
         with:
           config: demos/tour.py
           # Swap to `golden` once you have committed a baseline with
-          #   python -m onetake.probe demos/tour.py --update-golden
+          #   python -m demotape.probe demos/tour.py --update-golden
           # That turns "nothing is broken" into "nothing has changed",
           # which also catches a redirect quietly landing somewhere new.
           mode: probe

@@ -16,8 +16,8 @@ intercepted and its outcome written down. The result is normalised to strip
 anything that varies between runs, so it can be committed as a baseline and
 compared later:
 
-    python -m onetake.probe demos/tour.py --update-golden
-    python -m onetake.probe demos/tour.py --golden
+    python -m demotape.probe demos/tour.py --update-golden
+    python -m demotape.probe demos/tour.py --golden
 
 A mismatch means the flow changed — a renamed selector, a route that now
 404s — rather than clock jitter. There are no timings in the projection at
@@ -348,7 +348,7 @@ def load_config(path: Path) -> ProjectConfig:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="python -m onetake.probe",
+        prog="python -m demotape.probe",
         description="Walk a demo's scenes and report what the page did. "
         "No video, no narration, no API key.",
     )

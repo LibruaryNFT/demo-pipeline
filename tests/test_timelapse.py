@@ -2,8 +2,8 @@
 
 import pytest
 
-from onetake import Capture, SceneTiming
-from onetake.timelapse import (
+from demotape import Capture, SceneTiming
+from demotape.timelapse import (
     MAX_SPEED,
     Segment,
     build_filter,

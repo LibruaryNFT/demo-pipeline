@@ -28,7 +28,7 @@ work. Being explicit so nobody is surprised:
 python -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 .venv/bin/python -m playwright install chromium
-.venv/bin/python -m onetake.doctor
+.venv/bin/python -m demotape.doctor
 ```
 
 The doctor tells you what is missing before you waste a render finding out.
@@ -76,7 +76,7 @@ at it.
 
 ## Reporting a bug
 
-Include the output of `python -m onetake.doctor` (add `--xvfb` if you
+Include the output of `python -m demotape.doctor` (add `--xvfb` if you
 are using that backend), your OS, and which backend you are on. Those three
 answer most questions immediately.
 

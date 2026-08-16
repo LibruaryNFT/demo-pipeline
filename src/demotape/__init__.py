@@ -1,9 +1,9 @@
-"""onetake — narrated screen-recording demo videos for any web app.
+"""demotape — narrated screen-recording demo videos for any web app.
 
 Three stages: TTS narration, timed screen recording, ffmpeg composition.
 You supply scenes and narration; the engine produces an MP4.
 
-    from onetake import ProjectConfig, Scene, Branding, render
+    from demotape import ProjectConfig, Scene, Branding, render
 
     render(ProjectConfig(
         name="My App",
@@ -126,7 +126,7 @@ async def render_async(config: ProjectConfig, load_env: bool = True) -> Path:
         _load_env()
 
     logger.info("=" * 60)
-    logger.info("onetake — %s (backend: %s)", config.name, config.backend)
+    logger.info("demotape — %s (backend: %s)", config.name, config.backend)
     logger.info("=" * 60)
 
     logger.info("STAGE 1: narration (TTS)")

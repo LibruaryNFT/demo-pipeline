@@ -2,9 +2,9 @@
 
 import asyncio
 
-from onetake import Overlay, ProjectConfig, Scene
-from onetake.recording import overlay as ov
-from onetake.recording.timeline import _apply_zoom
+from demotape import Overlay, ProjectConfig, Scene
+from demotape.recording import overlay as ov
+from demotape.recording.timeline import _apply_zoom
 
 
 class FakePage:

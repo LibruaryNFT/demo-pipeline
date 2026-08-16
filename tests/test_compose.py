@@ -1,7 +1,7 @@
 """Title-card generation and drawtext escaping."""
 
-from onetake import Branding, Encoding
-from onetake.compose import (
+from demotape import Branding, Encoding
+from demotape.compose import (
     _escape_drawtext,
     default_intro,
     default_outro,
@@ -129,8 +129,8 @@ class TestVideoArgs:
     def args(self, *, timelapse: bool, scenes=(), lead_in=0.0):
         from pathlib import Path
 
-        from onetake import Capture
-        from onetake.compose import _video_args
+        from demotape import Capture
+        from demotape.compose import _video_args
 
         from .test_config import make_config
 
@@ -142,7 +142,7 @@ class TestVideoArgs:
         return _video_args(config, capture, audio_dur=15.0)
 
     def overran(self):
-        from onetake import SceneTiming
+        from demotape import SceneTiming
 
         return [
             SceneTiming("a", 0.0, 5.0, 0.0, 5.0),
@@ -156,7 +156,7 @@ class TestVideoArgs:
         assert "scale=" in args[1]
 
     def test_an_on_time_render_stays_on_the_plain_chain(self):
-        from onetake import SceneTiming
+        from demotape import SceneTiming
 
         on_time = [SceneTiming("a", 0.0, 5.0, 0.0, 5.0)]
         assert self.args(timelapse=True, scenes=on_time)[0] == "-vf"

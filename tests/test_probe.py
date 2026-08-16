@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from onetake.probe import (
+from demotape.probe import (
     Call,
     ProbePage,
     SceneOutcome,

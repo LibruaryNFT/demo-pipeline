@@ -1,4 +1,4 @@
-name: onetake
+name: demotape
 description: >-
   Check that a committed demo still demonstrates what it claims, and
   optionally re-render it.
@@ -40,7 +40,7 @@ inputs:
     required: false
     default: ""
   ref:
-    description: Version of onetake to install (branch, tag or SHA).
+    description: Version of demotape to install (branch, tag or SHA).
     required: false
     default: main
 
@@ -56,27 +56,27 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install onetake
+    - name: Install demotape
       shell: bash
       run: |
         python -m pip install --upgrade pip
         python -m pip install \
-          "onetake[bundled-ffmpeg] @ git+https://github.com/LibruaryNFT/onetake.git@${{ inputs.ref }}"
+          "demotape[bundled-ffmpeg] @ git+https://github.com/LibruaryNFT/demotape.git@${{ inputs.ref }}"
         python -m playwright install --with-deps chromium
 
     - name: Environment check
       shell: bash
-      run: python -m onetake.doctor || true
+      run: python -m demotape.doctor || true
 
     - name: Probe
       if: inputs.mode == 'probe'
       shell: bash
-      run: python -m onetake.probe "${{ inputs.config }}"
+      run: python -m demotape.probe "${{ inputs.config }}"
 
     - name: Probe against the baseline
       if: inputs.mode == 'golden'
       shell: bash
-      run: python -m onetake.probe "${{ inputs.config }}" --golden
+      run: python -m demotape.probe "${{ inputs.config }}" --golden
 
     - name: Render
       id: render
@@ -88,7 +88,7 @@ runs:
         python "${{ inputs.config }}"
         video=$(python - "${{ inputs.config }}" <<'PY'
         import sys
-        from onetake.probe import load_config
+        from demotape.probe import load_config
         print(load_config(__import__("pathlib").Path(sys.argv[1])).output_path)
         PY
         )

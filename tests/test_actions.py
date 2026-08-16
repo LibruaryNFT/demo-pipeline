@@ -4,15 +4,15 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from onetake import Scene
-from onetake.actions import (
+from demotape import Scene
+from demotape.actions import (
     DEFAULT_ACTION_HANDLERS,
     action_click,
     action_wait,
     resolve_handlers,
     run_scene_action,
 )
-from onetake.config import Timing
+from demotape.config import Timing
 
 from .test_config import make_config
 
