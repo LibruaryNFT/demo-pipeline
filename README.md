@@ -8,31 +8,24 @@ Built for product demos, launch clips, onboarding walkthroughs, conference submi
 
 ## What it produces
 
-![Intro card fading into the first scene](docs/assets/preview.gif)
+![Intro card cutting to a scene being scrolled](docs/assets/preview.gif)
 
-Silent, downscaled and cut short. The real file is 1920×1080 with narration.
+**[Watch the full video (3m11s, 1080p, narrated)](https://github.com/LibruaryNFT/demo-pipeline/releases/latest/download/vaultopolis-platform-tour.mp4)** — attached to the [latest release](https://github.com/LibruaryNFT/demo-pipeline/releases/latest), because video does not belong in git history. The GIF above is silent, downscaled, and stitched from two moments of it.
 
-### Watch the full renders
+A real product tour of a production SPA: 13 scenes, wallet state injected so the app renders its signed-in views, narration written to match. The config that produces it is about 350 lines and does nothing this repo does not document.
 
-Both are attached to the [latest release](https://github.com/LibruaryNFT/demo-pipeline/releases/latest), because video does not belong in git history.
+It is also where this package came from. It began as a one-off script for a hackathon submission; that script is what got generalised into demo-pipeline, and the video linked above was re-rendered by the package as the parity check.
 
-| Video | Length | What it shows |
-|---|---|---|
-| [example-demo.mp4](https://github.com/LibruaryNFT/demo-pipeline/releases/latest/download/example-demo.mp4) | 41s | Output of [examples/example_demo.py](examples/example_demo.py), which is in this repo. Render it yourself in about a minute and you get this file back. |
-| [vaultopolis-platform-tour.mp4](https://github.com/LibruaryNFT/demo-pipeline/releases/latest/download/vaultopolis-platform-tour.mp4) | 3m 11s | A real product tour of a production SPA: 13 scenes, wallet state injected so the app renders its signed-in views, narration written to match. Config for it is roughly 350 lines. |
-
-The second one is the honest measure of what this is for. It was originally a one-off script written for a hackathon submission; that script is what got generalised into this package, and the video above was re-rendered by the package to confirm nothing was lost in the move.
-
-### Stills
+### Stills from the same render
 
 | | |
 |---|---|
 | ![Intro card](docs/assets/01-intro.png) | ![A scene mid-action](docs/assets/02-scene.png) |
-| Intro card, generated from `name` + `Branding.tagline` | A scene running a custom action — here the handler outlines the page heading |
+| Intro card, generated from `name` + `Branding.tagline` | A scene: the browser driven to a page and scrolled, with the header showing the injected session |
 
 ![Outro card](docs/assets/03-outro.png)
 
-Outro card. Each line comes from a `Branding` field and is skipped when blank, so this same code renders a one-line card or a four-line one.
+Outro card. Each line comes from a `Branding` field and is skipped when blank, so this same code renders a one-line card or the four-line one above.
 
 ## Status
 
