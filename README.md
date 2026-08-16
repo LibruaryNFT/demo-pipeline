@@ -255,6 +255,34 @@ Each scene's MP3 is cached on disk as `seg_NN_<scene_id>.mp3` in the `*_audio` d
 
 Iterating on choreography while leaving narration alone costs nothing in API calls.
 
+## Checking a demo still demonstrates something
+
+A render exiting 0 does not mean the video is right. Actions tolerate failure on purpose — one dead selector should cost a scene's choreography, not the whole render — and most project handlers add their own fallbacks on top. That keeps renders alive and is also exactly how a demo rots: the narration still says "open any record for the full history" while the picture sits on the list page it was already showing, and nothing reports a problem.
+
+The probe walks the same scenes through the same handlers with a real browser, records nothing, and generates no narration:
+
+```bash
+python -m demo_pipeline.probe demos/tour.py
+```
+
+```
+  ok   hook                     wait                     /
+  ok   topshot_browse           browse_topshot           /analytics/topshot/players
+  FAIL market_stats             navigate_stats           /stats
+          ! click did not resolve: a[href*="stats"], a:has-text("Stats")
+```
+
+It exits non-zero when a scene fails or a selector stops resolving. No API key is needed and every sleep is capped, so a demo that takes three minutes to render probes in about fifteen seconds — cheap enough to run on every commit, which a full render is not.
+
+Commit a baseline and the same command detects drift:
+
+```bash
+python -m demo_pipeline.probe demos/tour.py --update-golden   # write it
+python -m demo_pipeline.probe demos/tour.py --golden          # compare
+```
+
+The baseline records each scene's action, whether it succeeded, the calls it made, and the path it ended on. There are no timings in it at all, so a mismatch is a real change — a renamed selector, a route that now 404s, a redirect that quietly lands somewhere else — and never clock jitter. Hosts are stripped from URLs, so a baseline captured against production still compares cleanly against staging.
+
 ## Contributing
 
 Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI runs, and what makes a change likely to land.
@@ -289,6 +317,7 @@ src/demo_pipeline/
 ├── actions.py                    built-in scene actions, handler dispatch
 ├── compose.py                    ffmpeg mux, title cards, volume boost
 ├── doctor.py                     environment diagnostic (python -m demo_pipeline.doctor)
+├── probe.py                      flow check + golden baseline (python -m demo_pipeline.probe)
 └── recording/
     ├── __init__.py               backend dispatch
     ├── timeline.py               scene sequencing, shared by both backends
