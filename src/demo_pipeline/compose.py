@@ -182,7 +182,7 @@ def compose_final(
         check=True,
         capture_output=True,
     )
-    audio_dur = get_duration(config.ffprobe, combined_audio)
+    audio_dur = get_duration(config.ffprobe, combined_audio, config.ffmpeg)
     logger.info("combined audio: %.1fs", audio_dur)
 
     # 2. Mux narration onto the screen capture, with fades
@@ -256,7 +256,7 @@ def compose_final(
     ):
         f.unlink(missing_ok=True)
 
-    final_dur = get_duration(config.ffprobe, final)
+    final_dur = get_duration(config.ffprobe, final, config.ffmpeg)
     size_mb = final.stat().st_size / 1024 / 1024
     logger.info("final video: %s (%.1f MB, %.0fs)", final, size_mb, final_dur)
     return final

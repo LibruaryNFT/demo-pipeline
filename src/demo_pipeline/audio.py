@@ -26,12 +26,21 @@ import subprocess
 from pathlib import Path
 
 from .config import ProjectConfig
+from .tools import duration_via_ffmpeg
 
 logger = logging.getLogger(__name__)
 
 
-def get_duration(ffprobe: str, path: Path) -> float:
-    """Read an audio or video file's duration in seconds via ffprobe."""
+def get_duration(ffprobe: str | None, path: Path, ffmpeg: str = "ffmpeg") -> float:
+    """Duration of a media file in seconds.
+
+    `ffprobe` may be None when only a bundled ffmpeg is available, in which
+    case the duration is parsed out of ffmpeg's own banner instead. Every
+    scene's length comes through here and the whole timeline is built from
+    those numbers, so both paths raise rather than guessing.
+    """
+    if not ffprobe:
+        return duration_via_ffmpeg(ffmpeg, path)
     result = subprocess.run(
         [
             ffprobe,
@@ -124,7 +133,7 @@ def generate_audio_segments(config: ProjectConfig) -> list[dict]:
 
     for i, scene in enumerate(config.scenes):
         path, source = resolve_segment(config, i, scene)
-        duration = get_duration(config.ffprobe, path)
+        duration = get_duration(config.ffprobe, path, config.ffmpeg)
         logger.info(
             "[%d/%d] %s %s (%.1fs)", i + 1, total_scenes, source, scene.id, duration
         )

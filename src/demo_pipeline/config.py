@@ -309,7 +309,9 @@ class ProjectConfig:
 
     # Tool paths
     ffmpeg: str = "ffmpeg"
-    ffprobe: str = "ffprobe"
+    # Resolved in __post_init__ and may end up None, which is not an error:
+    # it means no ffprobe exists and durations come from ffmpeg's banner.
+    ffprobe: str | None = "ffprobe"
     font: str = field(default_factory=default_font)
     # Checked in order; the first one on PATH is used. xvfb backend only.
     chrome_binaries: tuple[str, ...] = (
@@ -320,6 +322,15 @@ class ProjectConfig:
     )
 
     def __post_init__(self) -> None:
+        from .tools import resolve_ffmpeg, resolve_ffprobe
+
+        # Resolved once here rather than at every call site. A configured
+        # value passes through untouched; the defaults fall back to PATH and
+        # then to a bundled build, so a machine without ffmpeg can still
+        # render if the optional extra is installed.
+        self.ffmpeg = resolve_ffmpeg(self.ffmpeg)
+        self.ffprobe = resolve_ffprobe(self.ffprobe)
+
         self.output_path = Path(self.output_path)
         if self.chrome_profile is not None:
             self.chrome_profile = Path(self.chrome_profile)

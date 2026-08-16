@@ -6,7 +6,7 @@ You write the narration and describe the scenes. The pipeline generates the voic
 
 Built for product demos, launch clips, onboarding walkthroughs, conference submissions, and anything else where you would otherwise open a screen recorder and fumble the first take. The reason to reach for it over a screen recorder is that the video becomes a build artifact: it lives in version control, it regenerates when the app changes, and it can run in CI.
 
-**Before you clone it:** you need Python 3.10+, `ffmpeg` on PATH, and an **OpenAI API key** — narration is billed per character, so every render with new text costs money (fractions of a cent for a 60-second script). Installation is from git; there is no PyPI package yet. Everything has been tested on **Linux only**; the default backend should work on macOS and Windows but has not been run there, and the `xvfb` backend is Linux-only by design.
+**Before you clone it:** you need Python 3.10+ and ffmpeg. ffmpeg can come from your system or from the `bundled-ffmpeg` extra, which ships prebuilt binaries. Narration comes from OpenAI by default and is billed per character, but that is not a hard requirement — point scenes at audio files you already have, or pass your own `tts` callable, and no key is read at all. Installation is from git; there is no PyPI package yet. Everything has been tested on **Linux only**; the default backend should work on macOS and Windows but has not been run there, and the `xvfb` backend is Linux-only by design.
 
 ## What it produces
 
@@ -58,7 +58,7 @@ Scene length is driven by how long its narration takes to speak. The recorder ru
 
 ## Install
 
-Requires Python 3.10+, `ffmpeg` and `ffprobe` on PATH, and an OpenAI API key for the narration.
+Requires Python 3.10+ and ffmpeg. An OpenAI API key is the default narration source but not a requirement — see [Narration](#narration-caching-and-not-needing-an-api-key).
 
 ```bash
 python -m venv .venv
@@ -66,6 +66,14 @@ python -m venv .venv
 .venv/bin/python -m playwright install chromium
 export OPENAI_API_KEY=...    # or put it in .env (gitignored)
 ```
+
+No ffmpeg on the machine, or no way to install one? Take the bundled build instead:
+
+```bash
+.venv/bin/pip install -e ".[dev,bundled-ffmpeg]"
+```
+
+A system ffmpeg on PATH is always preferred when there is one — it is usually newer and more completely configured. The bundled build is a fallback, and `doctor` says which one is in use. Note it ships ffmpeg without ffprobe, so durations get parsed out of ffmpeg's own banner instead, which is accurate to a centisecond rather than a microsecond.
 
 That is everything the default `playwright` backend needs. The `xvfb` backend additionally wants a virtual X server and a real Chrome, which is Linux only:
 
@@ -376,6 +384,7 @@ src/demo_pipeline/
 ├── audio.py                      TTS narration + per-scene cache
 ├── actions.py                    built-in scene actions, handler dispatch
 ├── compose.py                    ffmpeg mux, title cards, volume boost
+├── tools.py                      ffmpeg/ffprobe resolution, bundled fallback
 ├── doctor.py                     environment diagnostic (python -m demo_pipeline.doctor)
 ├── probe.py                      flow check + golden baseline (python -m demo_pipeline.probe)
 └── recording/

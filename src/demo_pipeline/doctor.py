@@ -17,6 +17,7 @@ from pathlib import Path
 from shutil import which
 
 from .config import ProjectConfig, Scene, default_font
+from .tools import _bundled_ffmpeg
 
 OK = "ok"
 WARN = "warn"
@@ -47,12 +48,37 @@ def _version(cmd: list[str]) -> str:
 
 
 def check_ffmpeg(r: Report) -> None:
-    for tool in ("ffmpeg", "ffprobe"):
-        path = which(tool)
-        if path:
-            r.add(OK, tool, _version([tool, "-version"]))
+    """Report which ffmpeg is in play, and say when it is the bundled one.
+
+    Naming the source matters: a render on the bundled build has no ffprobe
+    and reads durations to centisecond precision instead, and someone
+    debugging an encode should not have to guess which binary produced it.
+    """
+    if which("ffmpeg"):
+        r.add(OK, "ffmpeg", _version(["ffmpeg", "-version"]))
+    else:
+        bundled = _bundled_ffmpeg()
+        if bundled:
+            r.add(WARN, "ffmpeg", f"not on PATH — using the bundled build at {bundled}")
         else:
-            r.add(FAIL, tool, "not on PATH — install ffmpeg")
+            r.add(
+                FAIL,
+                "ffmpeg",
+                "not on PATH — install it, or "
+                'pip install "demo-pipeline[bundled-ffmpeg]"',
+            )
+
+    if which("ffprobe"):
+        r.add(OK, "ffprobe", _version(["ffprobe", "-version"]))
+    elif which("ffmpeg") or _bundled_ffmpeg():
+        r.add(
+            WARN,
+            "ffprobe",
+            "not on PATH — durations will be parsed from ffmpeg's banner "
+            "(centisecond precision)",
+        )
+    else:
+        r.add(FAIL, "ffprobe", "not on PATH — install ffmpeg")
 
 
 def check_font(r: Report) -> None:

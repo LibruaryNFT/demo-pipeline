@@ -30,6 +30,12 @@ Homepage = "https://github.com/LibruaryNFT/demo-pipeline"
 Issues = "https://github.com/LibruaryNFT/demo-pipeline/issues"
 
 [project.optional-dependencies]
+# ffmpeg without a system install. Prebuilt binaries for Linux, macOS and
+# Windows, used only when ffmpeg is not already on PATH. Kept optional so
+# the default install stays small.
+bundled-ffmpeg = [
+    "imageio-ffmpeg>=0.5.1",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
