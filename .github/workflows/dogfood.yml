@@ -1,0 +1,63 @@
+name: Dogfood
+
+# ci.yml runs the test suite. This runs the two artefacts the test suite
+# cannot reach, because both need a machine rather than a mock:
+#
+#   * the Docker image — does it actually build, and does the thing inside
+#     it work? A Dockerfile that builds is not a Dockerfile that runs.
+#   * action.yml — shipped, documented, and until now never executed once.
+#
+# Both were "verified" only in the sense that their inputs looked right.
+# That is not verification, and this is the cheapest way to make it real.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  image:
+    name: Docker image builds and runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Load into the local daemon rather than pushing. Nothing publishes
+      # this image yet; the question is only whether it assembles.
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: demotape:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The build succeeding proves the layers resolve. It does not prove
+      # ffmpeg, the font or Chromium are where the code expects, which is
+      # the whole reason the image exists. doctor is the check for exactly
+      # that, and it exits non-zero when a dependency is missing.
+      - name: doctor inside the image
+        run: docker run --rm demotape:ci demotape.doctor
+
+      # The default CMD is the diagnostic, so a bare `docker run` should be
+      # the same check. If this ever diverges from the step above, the
+      # ENTRYPOINT/CMD split has drifted.
+      - name: default entrypoint is the diagnostic
+        run: docker run --rm demotape:ci
+
+  action:
+    name: action.yml runs against a real page
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Point the action at the commit under test rather than main, or a PR
+      # would exercise whatever main happened to contain and report it as
+      # this branch passing.
+      - uses: ./
+        with:
+          config: examples/example_demo.py
+          mode: probe
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
