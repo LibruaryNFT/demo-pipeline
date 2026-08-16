@@ -54,7 +54,7 @@ Three stages. Each is independently usable if you only need part of it.
    -> .mp3 per scene         -> screen capture           -> final .mp4
 ```
 
-Scene length is driven by how long its narration takes to speak. The recorder runs each scene's action, then holds until that scene's absolute end time, so a slow click steals from its own scene rather than pushing everything after it out of sync.
+Scene length is driven by how long its narration takes to speak. The recorder runs each scene's action, then holds until that scene's absolute end time, so a slow click steals from its own scene rather than pushing everything after it out of sync. When an action is slow enough that losing its tail is not acceptable, see [when an action takes longer than its narration](#when-an-action-takes-longer-than-its-narration).
 
 ## Install
 
@@ -291,6 +291,26 @@ Two settings worth knowing about:
 
 Tool paths (`ffmpeg`, `ffprobe`, `font`) and the Chrome binary search order (`chrome_binaries`) are config too, so a machine with unusual paths needs no code change.
 
+## When an action takes longer than its narration
+
+Scenes run against an absolute timeline: each one ends at a fixed offset from the start, so a slow action loses its own tail rather than pushing everything after it late. That is the right default, and it is not free. A checkout that takes nine seconds inside a five-second window pushes the next scene four seconds late; that scene still ends on its own deadline, so it captures one second of footage for five seconds of narration. From the first slow action onward, the picture and the voice are describing different moments, and the drift gets trimmed off the end.
+
+`timing.timelapse` fixes it in post instead:
+
+```python
+ProjectConfig(..., timing=Timing(timelapse=True))
+```
+
+Every scene's real footage is resampled onto exactly the span its narration occupies. An action that overran is sped up; a scene that got squeezed is stretched. Nothing is added and nothing is cut, so you still see the whole nine-second checkout — it just plays at 1.8x under the narration that describes it. The log names what changed:
+
+```
+timelapse: 2 of 4 segments remapped (0.60x–1.40x), 20.0s out
+```
+
+Off by default, for two reasons. It costs a re-encode of the body, and it changes what the picture shows — a render that is already in sync should not pay either price. It also declines rather than half-applying: if any scene captured too little footage to stretch (under 0.3s), or would need a rate outside 0.25x–8x, the whole remap is skipped and the reason is logged. A partial remap desynchronises everything after the segment it gave up on, which is worse than the drift it set out to fix.
+
+Verified against a synthetic 20-second source with a known 2-second overrun: the frame at output t=12.5s is the source's t=13.5s frame, which is what the plan predicts, and the total lands within one frame of the narration length.
+
 ## Narration: caching, and not needing an API key
 
 Each scene's MP3 is cached on disk as `seg_NN_<scene_id>.mp3` in the `*_audio` directory next to your output. The filename is the whole cache key, so **if you change a scene's narration text, delete its MP3** or the old audio will be reused. Iterating on choreography while leaving narration alone costs nothing in API calls.
@@ -314,12 +334,23 @@ Scene(id="hook", narration="Here is the problem.", action="wait",
 Or hand the whole job to something else — a local engine, another vendor, a human recording:
 
 ```python
-def piper(text: str) -> bytes:
-    return subprocess.run(["piper", "--output-raw"], input=text.encode(),
-                          capture_output=True, check=True).stdout
+import io, soundfile   # pip install kokoro>=0.9 soundfile
+from kokoro import KPipeline
 
-render(ProjectConfig(..., tts=piper))
+pipeline = KPipeline(lang_code="a")
+
+def kokoro(text: str) -> bytes:
+    audio = next(pipeline(text, voice="af_heart")).audio
+    buf = io.BytesIO()
+    soundfile.write(buf, audio, 24000, format="WAV")
+    return buf.getvalue()
+
+render(ProjectConfig(..., tts=kokoro))
 ```
+
+That runs offline, costs nothing per character, and puts no narration text on anyone's server — which matters more than it sounds, because narration is the part of a demo most likely to name an unreleased product.
+
+**On picking a local engine, check the licence before the voice.** Kokoro is Apache-2.0. Piper, the obvious alternative, [moved to GPL-3.0](https://github.com/OHF-Voice/piper1-gpl) when `rhasspy/piper` was archived — fine for a script you run, worth knowing before you vendor it. Coqui XTTS is non-commercial. None of this is legal advice, and none of it is checked for you.
 
 `tts` output is cached per scene exactly like generated narration, so a provider is called once per scene per change rather than once per render. `narration` stays required either way: it is what captions and the scene log are built from, and it documents what the scene actually says.
 
@@ -439,6 +470,7 @@ src/onetake/
 ├── compose.py                    ffmpeg mux, title cards, volume boost
 ├── tools.py                      ffmpeg/ffprobe resolution, bundled fallback
 ├── subtitles.py                  WebVTT caption track
+├── timelapse.py                  rate remap when an action overruns
 ├── export.py                     GIF and alternate aspect ratios
 ├── doctor.py                     environment diagnostic (python -m onetake.doctor)
 ├── probe.py                      flow check + golden baseline (python -m onetake.probe)

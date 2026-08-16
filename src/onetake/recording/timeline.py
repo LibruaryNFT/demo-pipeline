@@ -10,9 +10,23 @@ import logging
 import time
 
 from ..actions import resolve_handlers, run_scene_action
+from ..timelapse import SceneTiming
 from . import overlay as overlay_mod
 
 logger = logging.getLogger(__name__)
+
+
+class Timeline:
+    """What play_scenes measured: when it started, and where each scene fell.
+
+    `t0` is a `time.monotonic()` reading, so it is only meaningful against
+    another one — the backends subtract their own recording start from it to
+    work out how much footage precedes the first scene.
+    """
+
+    def __init__(self, t0: float, scenes: list[SceneTiming]):
+        self.t0 = t0
+        self.scenes = tuple(scenes)
 
 
 async def apply_setup_js(page, config) -> None:
@@ -25,12 +39,17 @@ async def apply_setup_js(page, config) -> None:
         logger.warning("setup_js injection failed: %s", e)
 
 
-async def play_scenes(page, config, segments: list[dict]) -> None:
+async def play_scenes(page, config, segments: list[dict]) -> Timeline:
     """Run every scene against an absolute timeline.
 
     Each scene ends at a fixed offset from t0, so a slow action steals from
     its own scene rather than pushing everything after it out of sync with
     the narration.
+
+    Returns where every scene actually landed. Nothing here changes based on
+    it — the sequencing is the same whether or not anything reads the
+    result — but it is what lets compose remap an overrun instead of
+    trimming it off the end.
 
     `setup_js` is re-applied whenever a scene changes the page URL. A page
     load tears down injected state, and the navigation may come from a
@@ -43,7 +62,9 @@ async def play_scenes(page, config, segments: list[dict]) -> None:
 
     t0 = time.monotonic()
     elapsed = 0.0
+    cursor = 0.0
     zoomed = False
+    timings: list[SceneTiming] = []
     for i, seg in enumerate(segments):
         scene = seg["scene"]
         dur = seg["duration"]
@@ -70,10 +91,31 @@ async def play_scenes(page, config, segments: list[dict]) -> None:
         wait_for = (t0 + scene_end) - time.monotonic()
         if wait_for > 0:
             await asyncio.sleep(wait_for)
+        else:
+            logger.warning(
+                "scene %s overran its narration by %.1fs", scene.id, -wait_for
+            )
+
+        # Taken after the wait, and carried forward as the next scene's
+        # start, so the spans are exactly contiguous. A gap between them
+        # would be footage the remap has no slot for.
+        now = time.monotonic() - t0
+        timings.append(
+            SceneTiming(
+                id=scene.id,
+                target_start=elapsed,
+                target_end=scene_end,
+                actual_start=cursor,
+                actual_end=now,
+            )
+        )
+        cursor = now
         elapsed = scene_end
 
     if ov.enabled and zoomed:
         await overlay_mod.zoom_reset(page, ov.zoom_reset_ms)
+
+    return Timeline(t0, timings)
 
 
 async def _apply_zoom(page, scene, ov, zoomed: bool) -> bool:

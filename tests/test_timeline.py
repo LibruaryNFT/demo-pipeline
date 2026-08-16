@@ -118,3 +118,61 @@ class TestSceneSequencing:
             ),
         )
         assert ran == ["a", "c"]
+
+
+class TestMeasuredTimings:
+    """play_scenes reports where each scene landed, so compose can remap an
+    overrun rather than trim it off the end."""
+
+    async def test_one_timing_per_scene_in_order(self):
+        page = FakePage(url="https://example.com")
+        scenes = [
+            Scene(id="a", narration="", action="wait"),
+            Scene(id="b", narration="", action="wait"),
+        ]
+        timeline = await play_scenes(page, make_config(), segments(*scenes))
+        assert [t.id for t in timeline.scenes] == ["a", "b"]
+
+    async def test_target_windows_come_from_the_narration_durations(self):
+        page = FakePage(url="https://example.com")
+        segs = [
+            {"scene": Scene(id="a", narration="", action="wait"), "duration": 0.0},
+            {"scene": Scene(id="b", narration="", action="wait"), "duration": 0.0},
+        ]
+        # Durations are zero so the test does not sleep; the targets are
+        # still the cumulative sum, which is what the remap divides by.
+        timeline = await play_scenes(page, make_config(), segs)
+        assert [(t.target_start, t.target_end) for t in timeline.scenes] == [
+            (0.0, 0.0), (0.0, 0.0),
+        ]
+
+    async def test_actual_spans_are_contiguous(self):
+        """A gap between two scenes would be recorded footage the remap has
+        no slot for, which shifts everything after it."""
+        page = FakePage(url="https://example.com")
+        scenes = [Scene(id=str(i), narration="", action="wait") for i in range(4)]
+        timeline = await play_scenes(page, make_config(), segments(*scenes))
+        for earlier, later in zip(timeline.scenes, timeline.scenes[1:], strict=False):
+            assert earlier.actual_end == later.actual_start
+
+    async def test_the_first_scene_starts_at_zero(self):
+        page = FakePage(url="https://example.com")
+        timeline = await play_scenes(
+            page, make_config(), segments(Scene(id="a", narration="", action="wait"))
+        )
+        assert timeline.scenes[0].actual_start == 0.0
+
+    async def test_t0_is_a_monotonic_reading_the_backends_can_subtract(self):
+        import time
+
+        before = time.monotonic()
+        page = FakePage(url="https://example.com")
+        timeline = await play_scenes(
+            page, make_config(), segments(Scene(id="a", narration="", action="wait"))
+        )
+        assert before <= timeline.t0 <= time.monotonic()
+
+    async def test_no_scenes_produces_an_empty_timeline_not_a_crash(self):
+        page = FakePage(url="https://example.com")
+        timeline = await play_scenes(page, make_config(), [])
+        assert timeline.scenes == ()

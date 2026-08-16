@@ -120,3 +120,62 @@ class TestFaststart:
 
     def test_can_be_turned_off(self):
         assert faststart_args(Encoding(faststart=False)) == []
+
+
+class TestVideoArgs:
+    """Step 2's video half: a plain filter chain, or a rate remap when one
+    is asked for and the timings justify it."""
+
+    def args(self, *, timelapse: bool, scenes=(), lead_in=0.0):
+        from pathlib import Path
+
+        from onetake import Capture
+        from onetake.compose import _video_args
+
+        from .test_config import make_config
+
+        config = make_config()
+        config.timing.timelapse = timelapse
+        capture = Capture(
+            path=Path("/tmp/x.mp4"), lead_in_s=lead_in, scenes=tuple(scenes)
+        )
+        return _video_args(config, capture, audio_dur=15.0)
+
+    def overran(self):
+        from onetake import SceneTiming
+
+        return [
+            SceneTiming("a", 0.0, 5.0, 0.0, 5.0),
+            SceneTiming("b", 5.0, 10.0, 5.0, 12.0),
+            SceneTiming("c", 10.0, 15.0, 12.0, 15.0),
+        ]
+
+    def test_off_by_default_is_a_plain_vf_chain(self):
+        args = self.args(timelapse=False, scenes=self.overran())
+        assert args[0] == "-vf"
+        assert "scale=" in args[1]
+
+    def test_an_on_time_render_stays_on_the_plain_chain(self):
+        from onetake import SceneTiming
+
+        on_time = [SceneTiming("a", 0.0, 5.0, 0.0, 5.0)]
+        assert self.args(timelapse=True, scenes=on_time)[0] == "-vf"
+
+    def test_an_overrun_switches_to_a_filter_complex(self):
+        args = self.args(timelapse=True, scenes=self.overran())
+        assert args[0] == "-filter_complex"
+        assert "trim=" in args[1]
+
+    def test_the_remap_feeds_the_same_scale_and_fade_as_the_plain_path(self):
+        plain = self.args(timelapse=False, scenes=self.overran())[1]
+        remapped = self.args(timelapse=True, scenes=self.overran())[1]
+        assert remapped.endswith(f";[tl]{plain}[v]")
+
+    def test_naming_the_video_output_forces_the_audio_map_too(self):
+        """ffmpeg stops choosing streams once the graph has a named output.
+        Without an explicit 1:a the narration is silently dropped."""
+        args = self.args(timelapse=True, scenes=self.overran())
+        assert args[2:] == ["-map", "[v]", "-map", "1:a"]
+
+    def test_a_capture_with_no_timings_cannot_remap(self):
+        assert self.args(timelapse=True, scenes=[])[0] == "-vf"

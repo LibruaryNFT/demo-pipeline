@@ -31,6 +31,7 @@ from pathlib import Path
 from shutil import which
 
 from ..config import ProjectConfig
+from ..timelapse import Capture
 from . import overlay as overlay_mod
 from .timeline import apply_setup_js, play_scenes
 
@@ -156,8 +157,8 @@ def _start_ffmpeg(
     )
 
 
-async def record(config: ProjectConfig, segments: list[dict]) -> Path:
-    """Record the screen half of the video. Returns the captured .mp4 path."""
+async def record(config: ProjectConfig, segments: list[dict]) -> Capture:
+    """Record the screen half of the video. Returns the capture and its timings."""
     from playwright.async_api import async_playwright
 
     timing = config.timing
@@ -211,12 +212,13 @@ async def record(config: ProjectConfig, segments: list[dict]) -> Path:
             # Start recording only once the page is settled, so the opening
             # frame is the app and not a white flash.
             ffmpeg_proc = _start_ffmpeg(config, total_duration, raw_video)
+            recording_started = time.monotonic()
             logger.info(
                 "ffmpeg recording started PID %d (capturing %s)",
                 ffmpeg_proc.pid, config.display_num,
             )
 
-            await play_scenes(page, config, segments)
+            timeline = await play_scenes(page, config, segments)
             await browser.close()
 
         try:
@@ -232,7 +234,11 @@ async def record(config: ProjectConfig, segments: list[dict]) -> Path:
             "screen recording done: %s (%d KB)",
             raw_video, raw_video.stat().st_size // 1024,
         )
-        return raw_video
+        return Capture(
+            path=raw_video,
+            lead_in_s=max(timeline.t0 - recording_started, 0.0),
+            scenes=timeline.scenes,
+        )
 
     finally:
         if ffmpeg_proc and ffmpeg_proc.poll() is None:

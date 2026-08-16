@@ -211,6 +211,13 @@ class Timing:
     # Tail recorded after the last scene, so the video does not cut dead.
     tail_s: float = 2.0
 
+    # Resample each scene's footage to fit its narration window, so an action
+    # that overruns is sped up rather than pushing everything after it out of
+    # sync. Costs a re-encode of the body and does nothing when every scene is
+    # already on time. Off by default because it changes what the picture
+    # shows, and a demo that is already in sync should not pay for it.
+    timelapse: bool = False
+
     # xvfb backend only.
     cdp_timeout_s: float = 25.0
     xvfb_startup_s: float = 1.5

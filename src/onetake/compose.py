@@ -7,9 +7,11 @@ import logging
 import subprocess
 from pathlib import Path
 
+from . import timelapse
 from .audio import get_duration
 from .config import Branding, Encoding, ProjectConfig, TitleCard
 from .subtitles import write_vtt
+from .timelapse import Capture
 
 logger = logging.getLogger(__name__)
 
@@ -156,10 +158,44 @@ def _build_title_card(config: ProjectConfig, card: TitleCard, out: Path) -> None
     )
 
 
+def _video_args(config: ProjectConfig, capture: Capture, audio_dur: float) -> list[str]:
+    """The video half of step 2: scale, fade, and optionally remap the rate.
+
+    Without the remap this is a plain `-vf` chain and ffmpeg picks the
+    streams itself. With it, the graph has a named output, and naming one
+    output means every mapping becomes explicit — including the audio, which
+    ffmpeg would otherwise have chosen for us.
+    """
+    w, h = config.resolution
+    enc = config.encoding
+    tail = (
+        f"scale={w}:{h},"
+        + fade_filter(audio_dur, enc.fade_in_frames, enc.fade_out_s)
+    )
+
+    plan = None
+    if config.timing.timelapse:
+        plan = timelapse.build_segments(capture.scenes, capture.lead_in_s)
+
+    if plan is None:
+        return ["-vf", tail]
+
+    logger.info("timelapse: %s", timelapse.describe(plan))
+    graph = timelapse.build_filter(plan) + f";[tl]{tail}[v]"
+    return ["-filter_complex", graph, "-map", "[v]", "-map", "1:a"]
+
+
 def compose_final(
-    config: ProjectConfig, screen_video: Path, segments: list[dict]
+    config: ProjectConfig, capture: Capture | Path, segments: list[dict]
 ) -> Path:
-    """Combine narration + screen capture + intro/outro into the final mp4."""
+    """Combine narration + screen capture + intro/outro into the final mp4.
+
+    A bare `Path` is accepted for a recording made outside the pipeline; it
+    simply has no timings, so the rate remap has nothing to work from.
+    """
+    if isinstance(capture, Path):
+        capture = Capture(path=capture)
+    screen_video = capture.path
     work = config.work_dir
     enc = config.encoding
     work.mkdir(parents=True, exist_ok=True)
@@ -188,7 +224,6 @@ def compose_final(
 
     # 2. Mux narration onto the screen capture, with fades
     raw_merged = work / "merged.mp4"
-    w, h = config.resolution
     subprocess.run(
         [
             config.ffmpeg, "-y", "-loglevel", "error",
@@ -196,9 +231,7 @@ def compose_final(
             "-i", str(combined_audio),
             *_encode_args(enc),
             "-t", str(audio_dur),
-            "-vf",
-            f"scale={w}:{h},"
-            + fade_filter(audio_dur, enc.fade_in_frames, enc.fade_out_s),
+            *_video_args(config, capture, audio_dur),
             "-shortest",
             str(raw_merged),
         ],
@@ -251,13 +284,13 @@ def compose_final(
         capture_output=True,
     )
 
-    # 7. Cleanup intermediates
+    # 6. Cleanup intermediates
     for f in (
         concat_file, combined_audio, raw_merged, intro_mp4, outro_mp4, pre_boost
     ):
         f.unlink(missing_ok=True)
 
-    # 6. Caption track. Written after the concat so the offset is the intro
+    # 7. Caption track. Written after the concat so the offset is the intro
     # card's real duration rather than an assumed default.
     if config.write_captions:
         vtt = write_vtt(config, segments, intro_card.duration)

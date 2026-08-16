@@ -37,6 +37,7 @@ from .config import (
 from .export import SHAPES, export_gif, export_shape
 from .recording import record_screen
 from .subtitles import build_vtt, write_vtt
+from .timelapse import Capture, SceneTiming
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,8 @@ __all__ = [
     "SHAPES",
     "build_vtt",
     "write_vtt",
+    "Capture",
+    "SceneTiming",
     "default_intro",
     "default_outro",
     "render",
@@ -130,10 +133,10 @@ async def render_async(config: ProjectConfig, load_env: bool = True) -> Path:
     segments = generate_audio_segments(config)
 
     logger.info("STAGE 2: screen recording")
-    screen_video = await record_screen(config, segments)
+    capture = await record_screen(config, segments)
 
     logger.info("STAGE 3: compose")
-    final = compose_final(config, screen_video, segments)
+    final = compose_final(config, capture, segments)
 
     logger.info("DONE: %s", final)
     return final

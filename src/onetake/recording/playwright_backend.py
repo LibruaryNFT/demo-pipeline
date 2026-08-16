@@ -11,17 +11,18 @@ either of those, use the xvfb backend instead.
 
 import asyncio
 import logging
-from pathlib import Path
+import time
 
 from ..config import DEFAULT_FRAMERATE, ProjectConfig
+from ..timelapse import Capture
 from . import overlay as overlay_mod
 from .timeline import apply_setup_js, play_scenes
 
 logger = logging.getLogger(__name__)
 
 
-async def record(config: ProjectConfig, segments: list[dict]) -> Path:
-    """Record the screen half of the video. Returns the captured video path."""
+async def record(config: ProjectConfig, segments: list[dict]) -> Capture:
+    """Record the screen half of the video. Returns the capture and its timings."""
     from playwright.async_api import async_playwright
 
     w, h = config.resolution
@@ -53,6 +54,10 @@ async def record(config: ProjectConfig, segments: list[dict]) -> Path:
             record_video_size={"width": w, "height": h},
         )
         page = await context.new_page()
+        # Playwright begins writing frames when the page opens, so everything
+        # from here to the first scene — the initial load and the settle —
+        # is footage that precedes t0.
+        recording_started = time.monotonic()
 
         await page.goto(
             config.start_url,
@@ -63,7 +68,7 @@ async def record(config: ProjectConfig, segments: list[dict]) -> Path:
 
         await overlay_mod.install(page, config)
         await apply_setup_js(page, config)
-        await play_scenes(page, config, segments)
+        timeline = await play_scenes(page, config, segments)
 
         await asyncio.sleep(timing.tail_s)
         await context.close()
@@ -73,4 +78,8 @@ async def record(config: ProjectConfig, segments: list[dict]) -> Path:
     if not videos:
         raise RuntimeError(f"recording produced no video file in {video_dir}")
     logger.info("screen recording done: %s", videos[0])
-    return videos[0]
+    return Capture(
+        path=videos[0],
+        lead_in_s=max(timeline.t0 - recording_started, 0.0),
+        scenes=timeline.scenes,
+    )
