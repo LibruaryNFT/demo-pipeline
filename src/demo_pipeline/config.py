@@ -63,6 +63,13 @@ class Scene:
     action: str  # resolved against built-in handlers, then action_handlers
     action_params: dict = field(default_factory=dict)
 
+    # Use this audio file instead of generating narration. Skips TTS and the
+    # cache entirely, so a project whose scenes all set this renders with no
+    # API key and no billing — which is what makes CI viable. The `narration`
+    # text is still required: it is what the caption and any future transcript
+    # are built from, and it documents what the scene says.
+    audio: str | Path | None = None
+
     # On-screen text, drawn by the browser for this scene's duration. This is
     # deliberately not the narration: spoken lines read as full sentences and
     # captions read as short phrases, so forcing one to serve as the other
@@ -276,7 +283,20 @@ class ProjectConfig:
     display_num: str = ":99"
     cdp_port: int = 9222
 
-    # TTS settings (OpenAI)
+    # Narration provider. Any callable taking the narration text and
+    # returning audio bytes: a local engine, another vendor, a recording
+    # already on disk. Set it and no OpenAI key is read. Leave it None and
+    # the built-in OpenAI path is used, keyed lazily and only for scenes that
+    # actually reach it.
+    #
+    #     def piper(text: str) -> bytes: ...
+    #     ProjectConfig(..., tts=piper)
+    #
+    # Output is cached per scene exactly like generated narration, so a
+    # provider is called once per scene per change, not once per render.
+    tts: Callable[[str], bytes] | None = None
+
+    # TTS settings, used only by the built-in OpenAI provider.
     tts_voice: str = "onyx"
     tts_speed: float = 0.92
     tts_model: str = "tts-1-hd"

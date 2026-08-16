@@ -283,11 +283,37 @@ Two settings worth knowing about:
 
 Tool paths (`ffmpeg`, `ffprobe`, `font`) and the Chrome binary search order (`chrome_binaries`) are config too, so a machine with unusual paths needs no code change.
 
-## Narration caching
+## Narration: caching, and not needing an API key
 
-Each scene's MP3 is cached on disk as `seg_NN_<scene_id>.mp3` in the `*_audio` directory next to your output. The filename is the whole cache key, so **if you change a scene's narration text, delete its MP3** or the old audio will be reused.
+Each scene's MP3 is cached on disk as `seg_NN_<scene_id>.mp3` in the `*_audio` directory next to your output. The filename is the whole cache key, so **if you change a scene's narration text, delete its MP3** or the old audio will be reused. Iterating on choreography while leaving narration alone costs nothing in API calls.
 
-Iterating on choreography while leaving narration alone costs nothing in API calls.
+Narration is resolved per scene, in this order:
+
+| Source | How | Needs a key |
+|---|---|---|
+| `Scene.audio` | A file you already have | no |
+| the cache | A previous run's MP3 | no |
+| `ProjectConfig.tts` | Any callable `(text) -> bytes` | no |
+| OpenAI | The built-in default | yes |
+
+The key is read at the last step only, and only for the first scene that actually reaches it. So a demo whose scenes all supply their own audio renders with no key and no billing:
+
+```python
+Scene(id="hook", narration="Here is the problem.", action="wait",
+      audio="narration/hook.mp3")
+```
+
+Or hand the whole job to something else — a local engine, another vendor, a human recording:
+
+```python
+def piper(text: str) -> bytes:
+    return subprocess.run(["piper", "--output-raw"], input=text.encode(),
+                          capture_output=True, check=True).stdout
+
+render(ProjectConfig(..., tts=piper))
+```
+
+`tts` output is cached per scene exactly like generated narration, so a provider is called once per scene per change rather than once per render. `narration` stays required either way: it is what captions and the scene log are built from, and it documents what the scene actually says.
 
 ## Checking a demo still demonstrates something
 
