@@ -8,20 +8,20 @@ Built for product demos, launch clips, onboarding walkthroughs, conference submi
 
 ## What it produces
 
-![Intro card cutting to a scene being scrolled](docs/assets/preview.gif)
+![Intro card cutting to the app being driven through a scene](docs/assets/preview.gif)
 
-**[Watch the full video (3m11s, 1080p, narrated)](https://github.com/LibruaryNFT/demo-pipeline/releases/latest/download/vaultopolis-platform-tour.mp4)** — attached to the [latest release](https://github.com/LibruaryNFT/demo-pipeline/releases/latest), because video does not belong in git history. The GIF above is silent, downscaled, and stitched from two moments of it.
+**[Watch the full video (2m26s, 1080p, narrated)](https://github.com/LibruaryNFT/demo-pipeline/releases/latest/download/oneconsensus-demo.mp4)** — attached to the [latest release](https://github.com/LibruaryNFT/demo-pipeline/releases/latest), because video does not belong in git history. The GIF above is silent, downscaled, and stitched from two moments of it.
 
-A real product tour of a production SPA: 13 scenes, wallet state injected so the app renders its signed-in views, narration written to match. The config that produces it is about 350 lines and does nothing this repo does not document.
+A real hackathon submission, start to finish without a human touching a screen recorder: title card, landing page, a scroll through the agent lineup, navigate to the evaluation view, pick an asset, run it, sit on the result while the narration explains it, then the performance page and a closing card. Eleven scenes in two and a half minutes.
 
-It is also where this package came from. It began as a one-off script for a hackathon submission; that script is what got generalised into demo-pipeline, and the video linked above was re-rendered by the package as the parity check.
+It was made with this package's direct predecessor — same Playwright-plus-TTS-plus-ffmpeg approach, but hand-timed, with the scene boundaries written as comments and the waits tuned by re-rendering until the narration lined up. Turning that into scenes you declare, and timings the tool derives from the audio, is what demo-pipeline is.
 
 ### Stills from the same render
 
 | | |
 |---|---|
 | ![Intro card](docs/assets/01-intro.png) | ![A scene mid-action](docs/assets/02-scene.png) |
-| Intro card, generated from `name` + `Branding.tagline` | A scene: the browser driven to a page and scrolled, with the header showing the injected session |
+| Intro card, generated from `name` + `Branding.tagline` | A scene: the browser driven through the app, holding on the result the narration is describing |
 
 ![Outro card](docs/assets/03-outro.png)
 
@@ -33,7 +33,7 @@ Working and used, but young. What has actually been exercised, so you know where
 
 - Both backends verified end to end on Linux, output inspected frame by frame.
 - The `playwright` backend is cross-platform *by construction* (Playwright's own recorder plus ffmpeg, with per-OS font defaults). It has **not** been run on macOS or Windows. If you are the first, expect the font path to be the thing that needs attention.
-- Exercised on a real production SPA as well as simple public pages: a 13-scene, 3-minute tour rendered to the microsecond against a reference cut.
+- Exercised on a real production SPA as well as simple public pages. The hardest check was a port: a 13-scene, 3-minute tour that a predecessor script had already produced was rebuilt as a config and re-rendered here, matching the original's runtime to the microsecond.
 - For a heavy SPA, raise `timing.settle_s` rather than switching `wait_until` to `networkidle`. That was the original advice here and testing contradicted it — an app that polls never goes idle, so `networkidle` burns the full timeout and fails the scene. The default `domcontentloaded` plus a longer settle is the reliable combination.
 - Narration costs money. OpenAI TTS is billed per character, so a 60-second script is fractions of a cent, but a render loop with the cache disabled is not free.
 
