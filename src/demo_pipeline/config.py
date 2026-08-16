@@ -301,6 +301,12 @@ class ProjectConfig:
     tts_speed: float = 0.92
     tts_model: str = "tts-1-hd"
 
+    # Write a WebVTT caption track next to the video. Costs nothing — the
+    # cue text and timings are the narration and its measured length, both
+    # already known — and a narrated video without captions is unusable with
+    # the sound off and inaccessible to anyone who needs them.
+    write_captions: bool = True
+
     # A cached narration MP3 smaller than this is treated as a failed write
     # and regenerated rather than reused.
     min_audio_bytes: int = 1000

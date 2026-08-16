@@ -34,7 +34,9 @@ from .config import (
     Timing,
     TitleCard,
 )
+from .export import SHAPES, export_gif, export_shape
 from .recording import record_screen
+from .subtitles import build_vtt, write_vtt
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,11 @@ __all__ = [
     "get_duration",
     "record_screen",
     "compose_final",
+    "export_gif",
+    "export_shape",
+    "SHAPES",
+    "build_vtt",
+    "write_vtt",
     "default_intro",
     "default_outro",
     "render",

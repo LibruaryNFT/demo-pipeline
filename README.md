@@ -351,6 +351,23 @@ python -m demo_pipeline.probe demos/tour.py --golden          # compare
 
 The baseline records each scene's action, whether it succeeded, the calls it made, and the path it ended on. There are no timings in it at all, so a mismatch is a real change — a renamed selector, a route that now 404s, a redirect that quietly lands somewhere else — and never clock jitter. Hosts are stripped from URLs, so a baseline captured against production still compares cleanly against staging.
 
+## Other things it can produce
+
+Every render writes a **WebVTT caption track** next to the video, timed from the same measured narration lengths the recorder sequences against and offset by the intro card. Set `write_captions=False` to skip it.
+
+Two derived outputs are available on the finished video. Both are filter passes over a file that already exists, so neither touches the recorder and neither can break a render.
+
+```python
+from demo_pipeline import export_gif, export_shape
+
+export_gif(config, start=2.0, duration=8.0)   # -> demo.gif
+export_shape(config, "vertical")              # -> demo.vertical.mp4
+```
+
+**GIF**, because GitHub autoplays GIFs inline in a README and does not autoplay MP4s. Two-pass palette with ordered Bayer dithering, which matters on flat UI colours — the default error diffusion shimmers across areas that should be perfectly still. Cut a span with `start`/`duration`; a whole narrated demo makes an enormous and unwatchable GIF.
+
+**Shapes**: `landscape` (1280x720, padded), `square` (1080x1080, centre-cropped), `vertical` (1080x1920, the landscape centred over a blurred copy of itself). The blurred fill is deliberate — re-rendering the app at a narrow viewport would change its responsive layout, so the vertical cut would show a different product. `vertical` is slow: full-frame box blur per frame, so expect minutes on a long demo.
+
 ## Contributing
 
 Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI runs, and what makes a change likely to land.
@@ -385,6 +402,8 @@ src/demo_pipeline/
 ├── actions.py                    built-in scene actions, handler dispatch
 ├── compose.py                    ffmpeg mux, title cards, volume boost
 ├── tools.py                      ffmpeg/ffprobe resolution, bundled fallback
+├── subtitles.py                  WebVTT caption track
+├── export.py                     GIF and alternate aspect ratios
 ├── doctor.py                     environment diagnostic (python -m demo_pipeline.doctor)
 ├── probe.py                      flow check + golden baseline (python -m demo_pipeline.probe)
 └── recording/

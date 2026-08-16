@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .audio import get_duration
 from .config import Branding, Encoding, ProjectConfig, TitleCard
+from .subtitles import write_vtt
 
 logger = logging.getLogger(__name__)
 
@@ -250,11 +251,17 @@ def compose_final(
         capture_output=True,
     )
 
-    # 6. Cleanup intermediates
+    # 7. Cleanup intermediates
     for f in (
         concat_file, combined_audio, raw_merged, intro_mp4, outro_mp4, pre_boost
     ):
         f.unlink(missing_ok=True)
+
+    # 6. Caption track. Written after the concat so the offset is the intro
+    # card's real duration rather than an assumed default.
+    if config.write_captions:
+        vtt = write_vtt(config, segments, intro_card.duration)
+        logger.info("caption track: %s", vtt)
 
     final_dur = get_duration(config.ffprobe, final, config.ffmpeg)
     size_mb = final.stat().st_size / 1024 / 1024
