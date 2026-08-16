@@ -120,6 +120,18 @@ def check_playwright(r: Report) -> None:
 
 
 def check_openai_key(r: Report) -> None:
+    """A missing key is a warning, never a failure.
+
+    It was a FAIL until the narration sources landed, and that is now
+    simply wrong: OpenAI is the last of four sources, behind Scene.audio,
+    the per-scene cache and a `tts` callable. A demo supplying its own
+    audio never reads the key at all, so failing the diagnostic on it
+    tells a correctly-configured project it is broken.
+
+    Caught by running the diagnostic inside the Docker image, where there
+    is no key and no .env and never will be — the one environment where
+    the old rule could not be right.
+    """
     if os.getenv("OPENAI_API_KEY"):
         r.add(OK, "OPENAI_API_KEY", "set in environment")
         return
@@ -133,8 +145,9 @@ def check_openai_key(r: Report) -> None:
         r.add(WARN, "OPENAI_API_KEY", f"not exported, but {path} exists")
     else:
         r.add(
-            FAIL, "OPENAI_API_KEY",
-            "not set and no .env found in the working directory",
+            WARN, "OPENAI_API_KEY",
+            "not set and no .env found — fine if every scene has `audio`, "
+            "cached narration, or a `tts` callable; needed otherwise",
         )
 
 

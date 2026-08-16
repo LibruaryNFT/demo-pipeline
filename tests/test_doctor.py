@@ -46,12 +46,29 @@ class TestApiKeyCheck:
         doctor.check_openai_key(r)
         assert r.rows[0][0] == doctor.OK
 
-    def test_no_key_and_no_dotenv_fails(self, monkeypatch, tmp_path):
+    def test_no_key_and_no_dotenv_warns_rather_than_fails(self, monkeypatch, tmp_path):
+        """OpenAI is the last of four narration sources. A project whose
+        scenes all carry their own audio never reads the key, so failing on
+        it tells a correctly-configured demo it is broken.
+
+        Found by running the diagnostic inside the Docker image, which has
+        no key and no .env and never will."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.chdir(tmp_path)
         r = doctor.Report()
         doctor.check_openai_key(r)
-        assert r.failed
+        assert r.rows[0][0] == doctor.WARN
+        assert not r.failed
+
+    def test_the_warning_names_the_alternatives(self, monkeypatch, tmp_path):
+        """A bare "not set" sends people hunting for a key they may not
+        need. The row has to say what to do instead."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.chdir(tmp_path)
+        r = doctor.Report()
+        doctor.check_openai_key(r)
+        detail = r.rows[0][2]
+        assert "audio" in detail and "tts" in detail
 
     def test_dotenv_present_warns_rather_than_fails(self, monkeypatch, tmp_path):
         # The key may well load at runtime, so this is not a hard failure.
