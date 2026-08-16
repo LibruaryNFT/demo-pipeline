@@ -368,6 +368,16 @@ export_shape(config, "vertical")              # -> demo.vertical.mp4
 
 **Shapes**: `landscape` (1280x720, padded), `square` (1080x1080, centre-cropped), `vertical` (1080x1920, the landscape centred over a blurred copy of itself). The blurred fill is deliberate — re-rendering the app at a narrow viewport would change its responsive layout, so the vertical cut would show a different product. `vertical` is slow: full-frame box blur per frame, so expect minutes on a long demo.
 
+## Before you point this at something
+
+Three things this makes easy are things that are expensive to get wrong.
+
+**Demo your own app.** Driving a browser through a site you do not own can breach its terms of service, and plenty of services prohibit automated access outright. Whether that is acceptable for a given target is your call and your liability, not something this tool can decide for you.
+
+**Watch the output before you publish it.** This is the one that will actually bite someone. Rendering is headless: nobody is looking at the screen while it happens. A session token in a URL bar, a customer name in a table, an email address in an account menu, an API key left in a form — all of it lands in the video, and the video then gets committed or uploaded. The `xvfb` backend makes this sharper rather than safer, because its entire purpose is capturing real signed-in state and real extensions. Use demo accounts and seeded data, and watch the file once before it goes anywhere.
+
+**Narration licensing.** Audio generated through the OpenAI **API** is yours to use commercially — their terms assign output to the caller. That is easy to confuse with the consumer ChatGPT voice terms, which are non-commercial and prohibit redistributing the audio as a standalone file. This uses the API. OpenAI also requires you to disclose that a voice is AI-generated. If you swap in a local engine via `tts`, its licence travels with your output too: Kokoro is Apache-2.0, the maintained Piper fork is GPL-3.0, and Coqui XTTS is non-commercial.
+
 ## Contributing
 
 Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI runs, and what makes a change likely to land.
