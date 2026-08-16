@@ -124,6 +124,13 @@ class Encoding:
     # small byline.
     line_height_ratio: float = 1.6
 
+    # Move the moov atom to the front of the finished mp4. Without it a
+    # browser has to download the whole file before it can start playing,
+    # which is the difference between a demo that plays on click and one that
+    # sits on a spinner. Costs a second pass over the output and nothing else,
+    # and only the final file gets it — intermediates are never streamed.
+    faststart: bool = True
+
 
 @dataclass
 class Timing:

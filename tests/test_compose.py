@@ -1,7 +1,12 @@
 """Title-card generation and drawtext escaping."""
 
-from demo_pipeline import Branding
-from demo_pipeline.compose import _escape_drawtext, default_intro, default_outro
+from demo_pipeline import Branding, Encoding
+from demo_pipeline.compose import (
+    _escape_drawtext,
+    default_intro,
+    default_outro,
+    faststart_args,
+)
 
 
 def texts(card) -> list[str]:
@@ -101,3 +106,17 @@ class TestEscapeDrawtext:
         card = default_intro("Acme", Branding(tagline="Fast, cheap: pick two"))
         escaped = _escape_drawtext(card.lines[1]["text"])
         assert r"\:" in escaped
+
+
+class TestFaststart:
+    """The moov atom belongs at the front of anything served over HTTP.
+
+    Without it a browser buffers the entire file before the first frame, so
+    a linked demo looks broken rather than slow.
+    """
+
+    def test_on_by_default(self):
+        assert faststart_args(Encoding()) == ["-movflags", "+faststart"]
+
+    def test_can_be_turned_off(self):
+        assert faststart_args(Encoding(faststart=False)) == []

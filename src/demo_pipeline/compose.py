@@ -47,6 +47,15 @@ def _encode_args(enc: Encoding) -> list[str]:
     ]
 
 
+def faststart_args(enc: Encoding) -> list[str]:
+    """Streaming flags for the final mux, empty when disabled.
+
+    Only the delivered file needs this. Applying it to intermediates would
+    pay for a rewrite of files nobody ever streams.
+    """
+    return ["-movflags", "+faststart"] if enc.faststart else []
+
+
 def fade_filter(clip_s: float, fade_in_frames: int, fade_out_s: float) -> str:
     """Build an ffmpeg fade chain that is safe for very short clips.
 
@@ -234,6 +243,7 @@ def compose_final(
             "-c:v", "copy",
             "-af", f"volume={enc.volume_boost_db}dB",
             "-c:a", enc.audio_codec,
+            *faststart_args(enc),
             str(final),
         ],
         check=True,
