@@ -1,7 +1,7 @@
 """WebVTT cue timing and text normalisation."""
 
-from demo_pipeline import Scene
-from demo_pipeline.subtitles import build_vtt, format_timestamp
+from onetake import Scene
+from onetake.subtitles import build_vtt, format_timestamp
 
 
 def segs(*pairs) -> list[dict]:

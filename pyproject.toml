@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "demo-pipeline"
+name = "onetake"
 version = "0.1.0"
 description = "Narrated screen-recording demo videos for any web app"
 readme = "README.md"
@@ -26,8 +26,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/LibruaryNFT/demo-pipeline"
-Issues = "https://github.com/LibruaryNFT/demo-pipeline/issues"
+Homepage = "https://github.com/LibruaryNFT/onetake"
+Issues = "https://github.com/LibruaryNFT/onetake/issues"
 
 [project.optional-dependencies]
 # ffmpeg without a system install. Prebuilt binaries for Linux, macOS and

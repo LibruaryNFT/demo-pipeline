@@ -50,4 +50,4 @@ WORKDIR /demo
 # you whether the environment is sound, not fail at an unexplained ffmpeg
 # error twenty seconds into something else.
 ENTRYPOINT ["python", "-m"]
-CMD ["demo_pipeline.doctor"]
+CMD ["onetake.doctor"]

@@ -1,4 +1,4 @@
-# demo-pipeline
+# onetake
 
 Narrated screen-recording demo videos for any web app, rendered from a config file.
 
@@ -12,11 +12,11 @@ Built for product demos, launch clips, onboarding walkthroughs, conference submi
 
 ![Intro card cutting to the app being driven through a scene](docs/assets/preview.gif)
 
-**[Watch the full video (2m26s, 1080p, narrated)](https://github.com/LibruaryNFT/demo-pipeline/releases/latest/download/oneconsensus-demo.mp4)** — attached to the [latest release](https://github.com/LibruaryNFT/demo-pipeline/releases/latest), because video does not belong in git history. The GIF above is silent, downscaled, and stitched from two moments of it.
+**[Watch the full video (2m26s, 1080p, narrated)](https://github.com/LibruaryNFT/onetake/releases/latest/download/oneconsensus-demo.mp4)** — attached to the [latest release](https://github.com/LibruaryNFT/onetake/releases/latest), because video does not belong in git history. The GIF above is silent, downscaled, and stitched from two moments of it.
 
 A real hackathon submission, start to finish without a human touching a screen recorder: title card, landing page, a scroll through the agent lineup, navigate to the evaluation view, pick an asset, run it, sit on the result while the narration explains it, then the performance page and a closing card. Eleven scenes in two and a half minutes.
 
-It was made with this package's direct predecessor — same Playwright-plus-TTS-plus-ffmpeg approach, but hand-timed, with the scene boundaries written as comments and the waits tuned by re-rendering until the narration lined up. Turning that into scenes you declare, and timings the tool derives from the audio, is what demo-pipeline is.
+It was made with this package's direct predecessor — same Playwright-plus-TTS-plus-ffmpeg approach, but hand-timed, with the scene boundaries written as comments and the waits tuned by re-rendering until the narration lined up. Turning that into scenes you declare, and timings the tool derives from the audio, is what onetake is.
 
 ### Stills from the same render
 
@@ -84,8 +84,8 @@ sudo apt install xvfb ffmpeg      # plus Google Chrome from its own package
 Check your setup before rendering anything:
 
 ```bash
-.venv/bin/python -m demo_pipeline.doctor          # playwright backend
-.venv/bin/python -m demo_pipeline.doctor --xvfb   # also the xvfb stack
+.venv/bin/python -m onetake.doctor          # playwright backend
+.venv/bin/python -m onetake.doctor --xvfb   # also the xvfb stack
 ```
 
 It checks each dependency in isolation — ffmpeg, the drawtext font, Chromium, the API key, and for `--xvfb` that x11grab really captures a non-black frame — and exits non-zero if anything the backend needs is missing. Run it first when a render fails; it turns "ffmpeg exited 222" into a named missing dependency.
@@ -99,7 +99,7 @@ Then render the example, which exercises TTS, the browser and ffmpeg end to end 
 ## Quick start
 
 ```python
-from demo_pipeline import Branding, ProjectConfig, Scene, render
+from onetake import Branding, ProjectConfig, Scene, render
 
 render(ProjectConfig(
     name="My App",
@@ -273,7 +273,7 @@ For full control, pass `intro=` / `outro=` as `TitleCard` objects and the genera
 Defaults target a quick demo: fast to iterate on, good enough to put in front of people. Nothing is baked in, so when a default does not suit, override it rather than patching the engine.
 
 ```python
-from demo_pipeline import Encoding, ProjectConfig, Timing
+from onetake import Encoding, ProjectConfig, Timing
 
 ProjectConfig(
     ...,
@@ -330,7 +330,7 @@ A render exiting 0 does not mean the video is right. Actions tolerate failure on
 The probe walks the same scenes through the same handlers with a real browser, records nothing, and generates no narration:
 
 ```bash
-python -m demo_pipeline.probe demos/tour.py
+python -m onetake.probe demos/tour.py
 ```
 
 ```
@@ -345,8 +345,8 @@ It exits non-zero when a scene fails or a selector stops resolving. No API key i
 Commit a baseline and the same command detects drift:
 
 ```bash
-python -m demo_pipeline.probe demos/tour.py --update-golden   # write it
-python -m demo_pipeline.probe demos/tour.py --golden          # compare
+python -m onetake.probe demos/tour.py --update-golden   # write it
+python -m onetake.probe demos/tour.py --golden          # compare
 ```
 
 The baseline records each scene's action, whether it succeeded, the calls it made, and the path it ended on. There are no timings in it at all, so a mismatch is a real change — a renamed selector, a route that now 404s, a redirect that quietly lands somewhere else — and never clock jitter. Hosts are stripped from URLs, so a baseline captured against production still compares cleanly against staging.
@@ -358,7 +358,7 @@ Every render writes a **WebVTT caption track** next to the video, timed from the
 Two derived outputs are available on the finished video. Both are filter passes over a file that already exists, so neither touches the recorder and neither can break a render.
 
 ```python
-from demo_pipeline import export_gif, export_shape
+from onetake import export_gif, export_shape
 
 export_gif(config, start=2.0, duration=8.0)   # -> demo.gif
 export_shape(config, "vertical")              # -> demo.vertical.mp4
@@ -375,7 +375,7 @@ The point of a demo that regenerates from a config is that something else can re
 **A composite action.** Point it at a config:
 
 ```yaml
-- uses: LibruaryNFT/demo-pipeline@main
+- uses: LibruaryNFT/onetake@main
   with:
     config: demos/tour.py
     mode: probe        # or golden, or render
@@ -386,8 +386,8 @@ The point of a demo that regenerates from a config is that something else can re
 **A Docker image**, for when the host dependencies are the problem:
 
 ```bash
-docker build -t demo-pipeline .
-docker run --rm -v "$PWD:/demo" demo-pipeline demo_pipeline.probe demos/tour.py
+docker build -t onetake .
+docker run --rm -v "$PWD:/demo" onetake onetake.probe demos/tour.py
 ```
 
 Built on Playwright's own image, so the browser and its system libraries are already present and version-matched — which removes the most tedious failure in this stack, a Chromium that will not start because the base image is missing a library. ffmpeg, ffprobe, Xvfb and DejaVu are installed on top. This is also the only clean way to run the `xvfb` backend, since the image controls its own display server rather than hoping the host has one.
@@ -432,7 +432,7 @@ For an end-to-end check that does exercise TTS, the browser and ffmpeg, run the 
 ## Layout
 
 ```
-src/demo_pipeline/
+src/onetake/
 ├── config.py                     ProjectConfig, Scene, TitleCard, Branding, Encoding, Timing
 ├── audio.py                      TTS narration + per-scene cache
 ├── actions.py                    built-in scene actions, handler dispatch
@@ -440,8 +440,8 @@ src/demo_pipeline/
 ├── tools.py                      ffmpeg/ffprobe resolution, bundled fallback
 ├── subtitles.py                  WebVTT caption track
 ├── export.py                     GIF and alternate aspect ratios
-├── doctor.py                     environment diagnostic (python -m demo_pipeline.doctor)
-├── probe.py                      flow check + golden baseline (python -m demo_pipeline.probe)
+├── doctor.py                     environment diagnostic (python -m onetake.doctor)
+├── probe.py                      flow check + golden baseline (python -m onetake.probe)
 └── recording/
     ├── __init__.py               backend dispatch
     ├── timeline.py               scene sequencing, shared by both backends

@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: LibruaryNFT/demo-pipeline@main
+      - uses: LibruaryNFT/onetake@main
         id: demo
         with:
           config: demos/tour.py

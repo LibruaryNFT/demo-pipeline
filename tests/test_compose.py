@@ -1,7 +1,7 @@
 """Title-card generation and drawtext escaping."""
 
-from demo_pipeline import Branding, Encoding
-from demo_pipeline.compose import (
+from onetake import Branding, Encoding
+from onetake.compose import (
     _escape_drawtext,
     default_intro,
     default_outro,

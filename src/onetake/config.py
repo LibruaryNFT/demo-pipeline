@@ -1,4 +1,4 @@
-"""Configuration dataclasses for the demo pipeline.
+"""Configuration dataclasses for onetake.
 
 A project supplies a ProjectConfig with a list of Scenes and optional
 Branding / TitleCards. The engine consumes the config and produces an MP4.

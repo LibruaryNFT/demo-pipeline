@@ -4,7 +4,7 @@ A doctor that reports green when a dependency is missing is worse than no
 doctor, so these tests focus on the failure paths.
 """
 
-from demo_pipeline import doctor
+from onetake import doctor
 
 
 class TestReport:

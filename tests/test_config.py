@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from demo_pipeline import (
+from onetake import (
     BACKEND_PLAYWRIGHT,
     BACKEND_XVFB,
     Branding,
@@ -12,7 +12,7 @@ from demo_pipeline import (
     Scene,
     TitleCard,
 )
-from demo_pipeline.config import default_font
+from onetake.config import default_font
 
 
 def make_config(**overrides) -> ProjectConfig:

@@ -2,7 +2,7 @@
 
 import pytest
 
-from demo_pipeline import tools
+from onetake import tools
 
 
 class TestParseDuration:

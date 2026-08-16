@@ -8,7 +8,7 @@ so it survived every end-to-end test until someone rendered one short scene.
 
 import pytest
 
-from demo_pipeline.compose import fade_filter
+from onetake.compose import fade_filter
 
 
 def start_of(chain: str) -> float:

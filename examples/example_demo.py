@@ -12,7 +12,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from demo_pipeline import Branding, ProjectConfig, Scene, Timing, TitleCard, render
+from onetake import Branding, ProjectConfig, Scene, Timing, TitleCard, render
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -90,7 +90,7 @@ SCENES = [
 
 
 CONFIG = ProjectConfig(
-    name="Demo Pipeline",
+    name="onetake",
     output_path=OUT_DIR / "example_demo.mp4",
     start_url=APP_URL,
     # "playwright" needs no system setup and runs anywhere. Switch to "xvfb"
@@ -112,7 +112,7 @@ CONFIG = ProjectConfig(
     intro=TitleCard(
         duration=3.5,
         lines=[
-            {"text": "Demo Pipeline", "color": "0x50c878", "size": 96, "y_offset": -40},
+            {"text": "onetake", "color": "0x50c878", "size": 96, "y_offset": -40},
             {"text": "One config, one video", "color": "0xaaaaaa", "size": 36, "y_offset": 60},
         ],
     ),

@@ -3,8 +3,8 @@
 
 import pytest
 
-from demo_pipeline import Scene
-from demo_pipeline.export import SHAPES, export_gif, export_shape
+from onetake import Scene
+from onetake.export import SHAPES, export_gif, export_shape
 
 from .test_config import make_config
 

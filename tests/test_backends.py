@@ -6,7 +6,7 @@ argument vectors it builds rather than running them.
 
 from pathlib import Path
 
-from demo_pipeline.recording import xvfb_backend
+from onetake.recording import xvfb_backend
 
 from .test_config import make_config
 
@@ -144,8 +144,8 @@ class TestFramerateHonesty:
     """framerate only applies to xvfb; the other backend must say so."""
 
     def test_default_framerate_is_shared_not_duplicated(self):
-        from demo_pipeline.config import DEFAULT_FRAMERATE
-        from demo_pipeline.recording import playwright_backend
+        from onetake.config import DEFAULT_FRAMERATE
+        from onetake.recording import playwright_backend
 
         assert playwright_backend.DEFAULT_FRAMERATE == DEFAULT_FRAMERATE
         assert make_config().framerate == DEFAULT_FRAMERATE
@@ -157,7 +157,7 @@ class TestFramerateHonesty:
     async def test_playwright_warns_when_framerate_is_set(self, caplog):
         # Playwright's recorder has no framerate control, so a configured
         # value cannot be honoured. Silently ignoring it is the bug.
-        from demo_pipeline.recording import playwright_backend
+        from onetake.recording import playwright_backend
 
         config = make_config(framerate=60)
         with caplog.at_level("WARNING"):

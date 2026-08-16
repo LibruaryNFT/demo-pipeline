@@ -1,7 +1,7 @@
 """Scene sequencing and setup_js re-injection."""
 
-from demo_pipeline import Scene
-from demo_pipeline.recording.timeline import play_scenes
+from onetake import Scene
+from onetake.recording.timeline import play_scenes
 
 from .test_actions import FakePage
 from .test_config import make_config

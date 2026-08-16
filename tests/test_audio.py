@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from demo_pipeline import Scene
-from demo_pipeline.audio import (
+from onetake import Scene
+from onetake.audio import (
     generate_audio_segments,
     get_duration,
     resolve_segment,
@@ -15,18 +15,18 @@ from .test_config import make_config
 
 
 class TestGetDuration:
-    @patch("demo_pipeline.audio.subprocess.run")
+    @patch("onetake.audio.subprocess.run")
     def test_parses_ffprobe_output(self, mock_run):
         mock_run.return_value.stdout = "12.345\n"
         assert get_duration("ffprobe", "audio.mp3") == 12.345
 
-    @patch("demo_pipeline.audio.subprocess.run")
+    @patch("onetake.audio.subprocess.run")
     def test_invokes_ffprobe_with_given_binary(self, mock_run):
         mock_run.return_value.stdout = "1.0"
         get_duration("/custom/ffprobe", "audio.mp3")
         assert mock_run.call_args[0][0][0] == "/custom/ffprobe"
 
-    @patch("demo_pipeline.audio.subprocess.run")
+    @patch("onetake.audio.subprocess.run")
     def test_requests_only_the_duration_field(self, mock_run):
         mock_run.return_value.stdout = "1.0"
         get_duration("ffprobe", "audio.mp3")
@@ -34,7 +34,7 @@ class TestGetDuration:
 
 
 class TestAudioCache:
-    @patch("demo_pipeline.audio.get_duration", return_value=4.2)
+    @patch("onetake.audio.get_duration", return_value=4.2)
     def test_reuses_existing_segments_without_calling_the_api(
         self, _mock_dur, tmp_path, monkeypatch
     ):
@@ -60,7 +60,7 @@ class TestAudioCache:
         assert segments[0]["duration"] == 4.2
         assert segments[0]["scene"].id == "hook"
 
-    @patch("demo_pipeline.audio.get_duration", return_value=1.0)
+    @patch("onetake.audio.get_duration", return_value=1.0)
     def test_truncated_file_is_not_treated_as_cached(
         self, _mock_dur, tmp_path, monkeypatch
     ):

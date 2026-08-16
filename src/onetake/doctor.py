@@ -1,7 +1,7 @@
 """Environment diagnostic — run this first when a render fails.
 
-    python -m demo_pipeline.doctor            # check the playwright backend
-    python -m demo_pipeline.doctor --xvfb     # also check the xvfb stack
+    python -m onetake.doctor            # check the playwright backend
+    python -m onetake.doctor --xvfb     # also check the xvfb stack
 
 Checks each dependency in isolation and reports what is missing, rather
 than leaving you to infer it from a Chrome log tail or a black frame.
@@ -65,7 +65,7 @@ def check_ffmpeg(r: Report) -> None:
                 FAIL,
                 "ffmpeg",
                 "not on PATH — install it, or "
-                'pip install "demo-pipeline[bundled-ffmpeg]"',
+                'pip install "onetake[bundled-ffmpeg]"',
             )
 
     if which("ffprobe"):
@@ -172,7 +172,7 @@ def check_capture(r: Report) -> None:
     if not (which("Xvfb") and which("ffmpeg")):
         return
     display = ":98"
-    out = Path("/tmp/demo_pipeline_doctor.mp4")
+    out = Path("/tmp/onetake_doctor.mp4")
     xvfb = subprocess.Popen(
         ["Xvfb", display, "-screen", "0", "640x480x24", "-nolisten", "tcp"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -221,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     r = Report()
-    print("demo-pipeline doctor\n")
+    print("onetake doctor\n")
     print(f"python {sys.version.split()[0]} on {sys.platform}\n")
 
     check_ffmpeg(r)
