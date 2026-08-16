@@ -195,6 +195,40 @@ Prefer text-based selectors like `button:has-text('Save')` over class selectors.
 
 A handler that throws is logged and skipped. One broken selector costs that scene's choreography, not the whole render.
 
+## Captions and zoom
+
+A 1920×1080 capture of a dense screen is unreadable in a README embed or on a phone. Two optional per-scene fields fix that, and both are drawn by the browser so the recorder captures them directly — no compositing pass, no font paths, no ffmpeg escaping.
+
+```python
+Scene(
+    id="metrics",
+    narration="Sixty-five metrics per edition, refreshed every six hours.",
+    action="wait",
+    caption="65 metrics per edition",     # on-screen text
+    zoom="#metrics-table",                # CSS selector to zoom toward
+    zoom_scale=1.8,                       # optional, defaults to 1.6
+)
+```
+
+**The caption is not the narration, on purpose.** Spoken lines read as full sentences; on-screen text reads as short phrases. Writing one and using it as both makes both worse. Leave `caption` blank and nothing is drawn.
+
+**Zoom holds until a scene doesn't ask for one.** Consecutive zooming scenes pan between their targets rather than pulling all the way out and back in; the first scene without a `zoom` releases it.
+
+Captions stay at their true size while the page zooms behind them, because the overlay is attached to `<html>` while zoom scales `<body>`. Tune the look and the camera speed on `Overlay`:
+
+```python
+ProjectConfig(
+    ...,
+    overlay=Overlay(accent="#50c878", zoom_ms=700, caption_per_scene=True),
+)
+```
+
+`Overlay(enabled=False)` injects nothing at all.
+
+One caveat worth knowing before you zoom: a transform on `<body>` makes it the containing block for its `position: fixed` children, so a sticky header will scroll with the page while a zoom is active and pin again once it releases. If that spoils the shot, don't zoom that scene.
+
+If you are on `playwright>=1.62`, its own `page.screencast.show_actions()` draws a cursor, a click pulse, an element highlight and an action label into the capture. That is not reimplemented here — this covers only what Playwright doesn't.
+
 ## Showing populated state without real credentials
 
 `setup_js` is arbitrary JavaScript evaluated once after the page loads. Use it to stub an API, seed local storage, or mock a browser extension so the demo shows a full, realistic screen without you signing in as anyone.
@@ -321,6 +355,7 @@ src/demo_pipeline/
 └── recording/
     ├── __init__.py               backend dispatch
     ├── timeline.py               scene sequencing, shared by both backends
+    ├── overlay.py                in-page captions and zoom
     ├── playwright_backend.py     cross-platform, headless
     └── xvfb_backend.py           Linux, real Chrome over CDP
 ```

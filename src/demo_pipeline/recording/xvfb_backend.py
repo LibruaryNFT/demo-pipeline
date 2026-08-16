@@ -31,6 +31,7 @@ from pathlib import Path
 from shutil import which
 
 from ..config import ProjectConfig
+from . import overlay as overlay_mod
 from .timeline import apply_setup_js, play_scenes
 
 logger = logging.getLogger(__name__)
@@ -204,6 +205,7 @@ async def record(config: ProjectConfig, segments: list[dict]) -> Path:
             )
             await asyncio.sleep(timing.startup_s)
 
+            await overlay_mod.install(page, config)
             await apply_setup_js(page, config)
 
             # Start recording only once the page is settled, so the opening

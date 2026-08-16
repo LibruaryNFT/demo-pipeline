@@ -63,6 +63,20 @@ class Scene:
     action: str  # resolved against built-in handlers, then action_handlers
     action_params: dict = field(default_factory=dict)
 
+    # On-screen text, drawn by the browser for this scene's duration. This is
+    # deliberately not the narration: spoken lines read as full sentences and
+    # captions read as short phrases, so forcing one to serve as the other
+    # makes both worse. Leave blank for no caption.
+    caption: str = ""
+
+    # CSS selector to zoom toward while this scene plays, and how far. A
+    # 1920x1080 capture of a dense screen is unreadable in a README embed or
+    # on a phone, and zooming is what makes the thing the narration is
+    # describing legible. The zoom releases when the next scene begins,
+    # unless that scene zooms somewhere else.
+    zoom: str = ""
+    zoom_scale: float = 1.6
+
 
 @dataclass
 class TitleCard:
@@ -72,6 +86,38 @@ class TitleCard:
     bg_color: str = "0x0a0a0b"
     # Each line: {"text": str, "color": str, "size": int, "y_offset": int}
     lines: list[dict] = field(default_factory=list)
+
+
+@dataclass
+class Overlay:
+    """Captions and zoom, drawn in the page and captured by the recorder.
+
+    Off costs nothing: with `enabled=False` no script is injected at all, so
+    a demo that uses neither caption nor zoom runs exactly as it did before
+    these existed.
+
+    Note this covers only what Playwright does not already do. From 1.62 its
+    own `page.screencast.show_actions()` draws a cursor, a click pulse, an
+    element highlight and an action label straight into the capture — use
+    that rather than asking for it here.
+    """
+
+    enabled: bool = True
+
+    accent: str = "#e91e63"
+    # Blank means a system font stack, which is what you want: it is the
+    # browser resolving a font it definitely has, not ffmpeg being handed a
+    # path that may not exist on the machine running the render.
+    font: str = ""
+
+    # How long the zoom and un-zoom take. Long enough to read as a camera
+    # move rather than a cut, short enough not to eat the scene.
+    zoom_ms: int = 700
+    zoom_reset_ms: int = 600
+
+    # Hold a caption for its scene and no longer. Set False to leave it up
+    # until the next caption replaces it.
+    caption_per_scene: bool = True
 
 
 @dataclass
@@ -186,6 +232,7 @@ class ProjectConfig:
     branding: Branding = field(default_factory=Branding)
     intro: TitleCard | None = None
     outro: TitleCard | None = None
+    overlay: Overlay = field(default_factory=Overlay)
 
     # Behaviour
     action_handlers: dict[str, ActionHandler] = field(default_factory=dict)

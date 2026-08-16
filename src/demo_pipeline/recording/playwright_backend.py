@@ -14,6 +14,7 @@ import logging
 from pathlib import Path
 
 from ..config import DEFAULT_FRAMERATE, ProjectConfig
+from . import overlay as overlay_mod
 from .timeline import apply_setup_js, play_scenes
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,7 @@ async def record(config: ProjectConfig, segments: list[dict]) -> Path:
         )
         await asyncio.sleep(timing.startup_s)
 
+        await overlay_mod.install(page, config)
         await apply_setup_js(page, config)
         await play_scenes(page, config, segments)
 
