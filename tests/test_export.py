@@ -1,6 +1,5 @@
 """Derived outputs: shape filter graphs and path/argument handling."""
 
-from pathlib import Path
 
 import pytest
 
