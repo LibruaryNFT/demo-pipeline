@@ -1,0 +1,30 @@
+# Check on every push that the committed demo still does what it says.
+#
+# This is the cheap half of the loop: no video, no narration, no API key,
+# seconds rather than minutes. It catches the failure a render cannot — a
+# selector that stopped resolving, a route that now 404s — because a render
+# tolerates those by design and still exits 0.
+name: demo check
+
+on:
+  push:
+    paths:
+      - "demos/**"
+      - ".github/workflows/demo-check.yml"
+  pull_request:
+    paths:
+      - "demos/**"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: LibruaryNFT/demo-pipeline@main
+        with:
+          config: demos/tour.py
+          # Swap to `golden` once you have committed a baseline with
+          #   python -m demo_pipeline.probe demos/tour.py --update-golden
+          # That turns "nothing is broken" into "nothing has changed",
+          # which also catches a redirect quietly landing somewhere new.
+          mode: probe

@@ -1,0 +1,95 @@
+name: demo-pipeline
+description: >-
+  Check that a committed demo still demonstrates what it claims, and
+  optionally re-render it.
+author: LibruaryNFT
+branding:
+  icon: film
+  color: green
+
+# A composite action, so it runs on the calling job's runner and inherits its
+# checkout. Two things it deliberately does NOT do:
+#
+#   * It does not install ffmpeg from apt. The bundled-ffmpeg extra covers it
+#     on every platform, and ubuntu-latest does not ship ffmpeg.
+#   * It does not render by default. A full render spends real money on TTS
+#     and takes as long as the video, which is not something to do on every
+#     push. `mode: probe` is the cheap check meant for that; rendering is for
+#     a tag or a manual run.
+
+inputs:
+  config:
+    description: Path to the demo script defining a ProjectConfig.
+    required: true
+  mode:
+    description: >-
+      probe   — walk the scenes and fail if any stopped resolving (no API key,
+                no cost, seconds not minutes)
+      golden  — the same, compared against the committed baseline
+      render  — produce the video (needs narration; see openai-api-key)
+    required: false
+    default: probe
+  python-version:
+    description: Python to set up.
+    required: false
+    default: "3.12"
+  openai-api-key:
+    description: >-
+      Only read for mode=render, and only for scenes with no `audio` file and
+      no cached narration. Pass it as a secret, never a literal.
+    required: false
+    default: ""
+  ref:
+    description: Version of demo-pipeline to install (branch, tag or SHA).
+    required: false
+    default: main
+
+outputs:
+  video:
+    description: Path to the rendered video (mode=render only).
+    value: ${{ steps.render.outputs.video }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install demo-pipeline
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install \
+          "demo-pipeline[bundled-ffmpeg] @ git+https://github.com/LibruaryNFT/demo-pipeline.git@${{ inputs.ref }}"
+        python -m playwright install --with-deps chromium
+
+    - name: Environment check
+      shell: bash
+      run: python -m demo_pipeline.doctor || true
+
+    - name: Probe
+      if: inputs.mode == 'probe'
+      shell: bash
+      run: python -m demo_pipeline.probe "${{ inputs.config }}"
+
+    - name: Probe against the baseline
+      if: inputs.mode == 'golden'
+      shell: bash
+      run: python -m demo_pipeline.probe "${{ inputs.config }}" --golden
+
+    - name: Render
+      id: render
+      if: inputs.mode == 'render'
+      shell: bash
+      env:
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+      run: |
+        python "${{ inputs.config }}"
+        video=$(python - "${{ inputs.config }}" <<'PY'
+        import sys
+        from demo_pipeline.probe import load_config
+        print(load_config(__import__("pathlib").Path(sys.argv[1])).output_path)
+        PY
+        )
+        echo "video=$video" >> "$GITHUB_OUTPUT"

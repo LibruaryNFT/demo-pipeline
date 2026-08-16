@@ -1,0 +1,38 @@
+# Re-render the demo and attach it to a release.
+#
+# Deliberately not on push. A render costs real money in TTS for any changed
+# narration and takes about as long as the video, so it belongs on a tag or a
+# manual run, with the probe workflow carrying the per-commit load.
+name: demo render
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: LibruaryNFT/demo-pipeline@main
+        id: demo
+        with:
+          config: demos/tour.py
+          mode: render
+          # Only read for scenes with no `audio` file and no cached
+          # narration. Commit the audio and this can be left out entirely.
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo
+          path: |
+            ${{ steps.demo.outputs.video }}
+            ${{ steps.demo.outputs.video }}.vtt
+
+      # Video does not belong in git history. A release asset is where it goes.
+      - if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${GITHUB_REF_NAME}" "${{ steps.demo.outputs.video }}" --clobber

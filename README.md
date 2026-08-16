@@ -368,6 +368,32 @@ export_shape(config, "vertical")              # -> demo.vertical.mp4
 
 **Shapes**: `landscape` (1280x720, padded), `square` (1080x1080, centre-cropped), `vertical` (1080x1920, the landscape centred over a blurred copy of itself). The blurred fill is deliberate — re-rendering the app at a narrow viewport would change its responsive layout, so the vertical cut would show a different product. `vertical` is slow: full-frame box blur per frame, so expect minutes on a long demo.
 
+## Running it in CI
+
+The point of a demo that regenerates from a config is that something else can regenerate it. Two pieces ship for that.
+
+**A composite action.** Point it at a config:
+
+```yaml
+- uses: LibruaryNFT/demo-pipeline@main
+  with:
+    config: demos/tour.py
+    mode: probe        # or golden, or render
+```
+
+`probe` and `golden` need no API key, cost nothing and finish in seconds, which is what makes them viable on every push. `render` spends real money on any changed narration and takes about as long as the video, so it belongs on a tag or a manual run. Working templates for both halves are in [examples/workflows/](examples/workflows/).
+
+**A Docker image**, for when the host dependencies are the problem:
+
+```bash
+docker build -t demo-pipeline .
+docker run --rm -v "$PWD:/demo" demo-pipeline demo_pipeline.probe demos/tour.py
+```
+
+Built on Playwright's own image, so the browser and its system libraries are already present and version-matched — which removes the most tedious failure in this stack, a Chromium that will not start because the base image is missing a library. ffmpeg, ffprobe, Xvfb and DejaVu are installed on top. This is also the only clean way to run the `xvfb` backend, since the image controls its own display server rather than hoping the host has one.
+
+Running the image with no arguments runs `doctor`.
+
 ## Before you point this at something
 
 Three things this makes easy are things that are expensive to get wrong.
