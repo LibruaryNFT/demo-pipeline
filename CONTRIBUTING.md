@@ -3,6 +3,25 @@
 Contributions are welcome. This is a small, focused tool and the bar is
 mostly "does it still do one thing well".
 
+## What to expect from me
+
+This is maintained on a best-effort basis by one person, alongside other
+work. Being explicit so nobody is surprised:
+
+- **No support commitment.** Issues and pull requests may sit for a while or
+  go unanswered. That is not a judgement on them.
+- **Bug reports with a reproduction are the most useful thing you can send.**
+  A config that fails plus the `doctor` output beats a description.
+- **Usage questions are likely to go unanswered.** The README and
+  `examples/` are the documentation; if they do not cover it, the source is
+  1500 lines and is meant to be read.
+- **Pull requests are accepted, not guaranteed.** If one is small, tested and
+  in keeping with the notes below, it has a good chance. If it is large or
+  changes direction, open an issue first rather than writing it — a closed
+  PR wastes far more of your time than a paragraph would have.
+- **Fork freely.** Apache-2.0. If you want it to go somewhere I do not, that
+  is a feature of the licence, not a problem to negotiate.
+
 ## Getting set up
 
 ```bash

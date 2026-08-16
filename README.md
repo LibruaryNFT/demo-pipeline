@@ -2,9 +2,11 @@
 
 Narrated screen-recording demo videos for any web app, rendered from a config file.
 
-You write the narration and describe the scenes. The pipeline generates the voiceover, drives a real browser through your app in time with it, and cuts the result together with intro and outro cards. Re-running produces the same video, so changing one line of narration means re-rendering rather than re-recording.
+You write the narration and describe the scenes. The pipeline generates the voiceover, drives a real browser through your app in time with it, and cuts the result together with intro and outro cards. Narration is cached per scene, so once a render has happened, re-running it reproduces the same video and changing one line means re-rendering rather than re-recording the whole take.
 
-Built for product demos, launch clips, onboarding walkthroughs, conference submissions, and anything else where you would otherwise open a screen recorder and fumble the first take.
+Built for product demos, launch clips, onboarding walkthroughs, conference submissions, and anything else where you would otherwise open a screen recorder and fumble the first take. The reason to reach for it over a screen recorder is that the video becomes a build artifact: it lives in version control, it regenerates when the app changes, and it can run in CI.
+
+**Before you clone it:** you need Python 3.10+, `ffmpeg` on PATH, and an **OpenAI API key** — narration is billed per character, so every render with new text costs money (fractions of a cent for a 60-second script). Installation is from git; there is no PyPI package yet. Everything has been tested on **Linux only**; the default backend should work on macOS and Windows but has not been run there, and the `xvfb` backend is Linux-only by design.
 
 ## What it produces
 
@@ -256,6 +258,8 @@ Iterating on choreography while leaving narration alone costs nothing in API cal
 ## Contributing
 
 Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI runs, and what makes a change likely to land.
+
+Maintained best-effort by one person. There is no support commitment: issues and pull requests may go unanswered, usage questions probably will, and bug reports with a reproduction are worth far more than either. Fork it if you need it to go somewhere this repo will not.
 
 macOS and Windows reports are especially useful: the default backend is cross-platform by construction but has only been exercised on Linux.
 
